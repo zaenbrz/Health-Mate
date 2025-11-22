@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginHorizontal: 20,
     marginTop: 10,
+    marginBottom: 15,
   },
   languageButton: {
     flexDirection: 'row',

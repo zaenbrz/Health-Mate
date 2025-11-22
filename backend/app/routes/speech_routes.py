@@ -56,26 +56,6 @@ async def transcribe_audio(
         logger.error(f"Error transcribing audio: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/languages")
-async def get_supported_languages(current_user=Depends(get_current_user)):
-    """Get list of supported languages for speech transcription"""
-    return {
-        "languages": speech_service.get_supported_languages(),
-        "current": speech_service.current_language
-    }
-
-@router.post("/set-language")
-async def set_language(
-    language: str,
-    current_user=Depends(get_current_user)
-):
-    """Set the default language for speech transcription"""
-    speech_service.set_language(language)
-    return {
-        "message": "Language updated successfully",
-        "language": language
-    }
-
 @router.get("/test")
 async def test_speech_auth(current_user=Depends(get_current_user)):
     """Test endpoint to verify speech authentication"""

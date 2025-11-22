@@ -63,7 +63,7 @@ async def get_ai_response(message: str, email: str) -> str:
             model="gpt-4-1106-preview",
             messages=messages,
             temperature=0.3,
-            max_tokens=100,
+            max_tokens=500,
             top_p=0.9,
             frequency_penalty=0.3,
             presence_penalty=0.3,

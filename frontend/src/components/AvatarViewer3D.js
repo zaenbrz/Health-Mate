@@ -15,12 +15,14 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
 
   async function loadHtmlFile() {
     try {
-      // Load the HTML file from assets
+      console.log('🔄 Loading avatar-viewer.html...');
       const asset = Asset.fromModule(require('../../assets/avatar-viewer.html'));
       await asset.downloadAsync();
-      setHtmlUri(asset.localUri || asset.uri);
+      const uri = asset.localUri || asset.uri;
+      console.log('✅ Working HTML loaded:', uri);
+      setHtmlUri(uri);
     } catch (error) {
-      console.error('Failed to load avatar viewer HTML:', error);
+      console.error('❌ Failed to load avatar viewer HTML:', error);
     }
   }
 
@@ -28,9 +30,13 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
     if (viewerReady && avatarUrl) {
       // Proxy the GLB through backend to avoid CORS issues
       const proxiedUrl = `${CONFIG.API_URL}/avatar/proxy-glb?url=${encodeURIComponent(avatarUrl)}`;
-      console.log('Original avatar URL:', avatarUrl);
-      console.log('Proxied URL:', proxiedUrl);
+      console.log('🔵 Loading avatar...');
+      console.log('  Original URL:', avatarUrl);
+      console.log('  Proxied URL:', proxiedUrl);
+      console.log('  Viewer ready:', viewerReady);
       sendMessage({ type: 'loadAvatar', url: proxiedUrl });
+    } else {
+      console.log('⏸️ Avatar loading conditions:', { viewerReady, avatarUrl: !!avatarUrl });
     }
   }, [viewerReady, avatarUrl]);
 
@@ -42,13 +48,25 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
 
   function sendMessage(data) {
     if (webViewRef.current) {
+      console.log('📤 Sending message to WebView:', data);
       webViewRef.current.postMessage(JSON.stringify(data));
+    } else {
+      console.warn('⚠️ WebView ref not available');
     }
   }
 
   function handleMessage(event) {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      
+      // Handle console messages from WebView
+      if (data.type === 'console') {
+        const prefix = data.level === 'error' ? '❌ WebView:' : 
+                      data.level === 'warn' ? '⚠️ WebView:' : '💬 WebView:';
+        console.log(prefix, data.message);
+        return;
+      }
+      
       console.log('Avatar viewer message:', data);
 
       switch (data.type) {
@@ -60,6 +78,15 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
           break;
         case 'morphsFound':
           console.log('Available morphs:', data.morphs);
+          break;
+        case 'animationLoaded':
+          console.log('✅ Animation loaded:', data);
+          break;
+        case 'animationPlaying':
+          console.log('▶️ Animation playing:', data.name);
+          break;
+        case 'animationStopped':
+          console.log('⏹️ Animation stopped');
           break;
         case 'error':
           console.error('Avatar viewer error:', data.message);
@@ -79,11 +106,22 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
     stopAudio: () => sendMessage({ type: 'stopAudio' }),
     testMorph: (strength = 1, duration = 800) => sendMessage({ type: 'testMorph', strength, duration }),
     loadAvatar: (url) => sendMessage({ type: 'loadAvatar', url }),
+    loadAnimation: (url) => sendMessage({ type: 'loadAnimation', url }),
+    playAnimation: (name, loop = true, fadeDuration = 0.5) => sendMessage({ type: 'playAnimation', name, loop, fadeDuration }),
+    stopAnimation: (fadeDuration = 0.5) => sendMessage({ type: 'stopAnimation', fadeDuration }),
+    injectJavaScript: (script) => {
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(script);
+      }
+    },
   }));
 
   if (!htmlUri) {
+    console.log('⏳ Waiting for HTML file to load...');
     return <View style={[styles.container, style]} />;
   }
+
+  console.log('✅ Rendering AvatarViewer3D with HTML:', htmlUri);
 
   return (
     <View style={[styles.container, style]}>
@@ -91,6 +129,42 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
         ref={webViewRef}
         source={{ uri: htmlUri }}
         onMessage={handleMessage}
+        injectedJavaScript={`
+          // Override console methods to send to React Native
+          (function() {
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            
+            console.log = function(...args) {
+              originalLog.apply(console, args);
+              window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'console',
+                level: 'log',
+                message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+              }));
+            };
+            
+            console.error = function(...args) {
+              originalError.apply(console, args);
+              window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'console',
+                level: 'error',
+                message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+              }));
+            };
+            
+            console.warn = function(...args) {
+              originalWarn.apply(console, args);
+              window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'console',
+                level: 'warn',
+                message: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+              }));
+            };
+          })();
+          true;
+        `}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         mediaPlaybackRequiresUserAction={false}
@@ -103,12 +177,14 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
         cacheEnabled={false}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.error('WebView error:', nativeEvent);
+          console.error('❌ WebView error:', nativeEvent);
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.error('WebView HTTP error:', nativeEvent);
+          console.error('❌ WebView HTTP error:', nativeEvent);
         }}
+        onLoadStart={() => console.log('🔄 WebView loading started')}
+        onLoadEnd={() => console.log('✅ WebView loading finished')}
       />
     </View>
   );

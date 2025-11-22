@@ -9,69 +9,135 @@
     body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
     #canvas-container { width: 100%; height: 100%; }
   </style>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-      }
-    }
-  </script>
 </head>
 <body>
   <div id="canvas-container"></div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  <!-- Load Three.js from CDN (non-module version for better compatibility) -->
+    <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/fflate@0.7.4/umd/index.js"></script>
+    <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://unpkg.com/three@0.136.0/examples/js/controls/OrbitControls.js"></script>  <script>
+    // Immediate message on script start
+    (function() {
+      try {
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ 
+            type: 'console', 
+            level: 'log', 
+            message: '🚀 Script execution started' 
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to send initial message:', e);
+      }
+    })();
 
     let scene, camera, renderer, controls;
     let avatarModel = null;
+    let avatarContainer = null;
+    let containerOriginalPosition = new THREE.Vector3();
+    let containerOriginalRotation = new THREE.Euler();
+    let hipsBone = null;
+    let hipsOriginalPosition = new THREE.Vector3();
     let mouthMesh = null;
     let jawBone = null;
     let morphIndex = null;
     let audioContext = null;
     let analyser = null;
     let audioSource = null;
+    let mixer = null;
+    let mixerRoot = null; // The armature/skeleton object for animations
+    let clock = new THREE.Clock();
+    let currentAnimation = null;
+    let animations = [];
+    let avatarWorldPosition = new THREE.Vector3();
+    let isAnimationPlaying = false;
+    let savedAvatarPosition = new THREE.Vector3();
+    let savedAvatarRotation = new THREE.Euler();
+    let savedAvatarScale = new THREE.Vector3();
+
+    function sendMessage(data) {
+      // For React Native WebView
+      if (window.ReactNativeWebView) {
+        try {
+          window.ReactNativeWebView.postMessage(JSON.stringify(data));
+        } catch (e) {
+          console.error('Failed to send message:', e);
+        }
+      }
+    }
+
+    // Check if Three.js loaded (diagnostics only, don't init here)
+    window.addEventListener('load', function() {
+      sendMessage({ type: 'console', level: 'log', message: '📦 Window loaded. THREE available: ' + (typeof THREE !== 'undefined') });
+      sendMessage({ type: 'console', level: 'log', message: '🎮 GLTFLoader available: ' + (typeof THREE !== 'undefined' && typeof THREE.GLTFLoader !== 'undefined') });
+      sendMessage({ type: 'console', level: 'log', message: '🎮 OrbitControls (THREE.OrbitControls): ' + (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') });
+      sendMessage({ type: 'console', level: 'log', message: '🎮 OrbitControls (global): ' + (typeof OrbitControls !== 'undefined') });
+      
+      if (typeof THREE === 'undefined') {
+        sendMessage({ type: 'error', message: 'Three.js failed to load from CDN' });
+      }
+    });
 
     function init() {
-      // Scene
-      scene = new THREE.Scene();
-      scene.background = null; // transparent
+      try {
+        sendMessage({ type: 'console', level: 'log', message: '🔧 Starting init...' });
+        
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = null; // transparent
 
-      // Camera
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 1.6, 2.5);
+        // Camera - positioned to focus on head/face
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.2, 2.3);
 
-      // Renderer
-      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      document.getElementById('canvas-container').appendChild(renderer.domElement);
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        sendMessage({ type: 'console', level: 'log', message: '✅ Renderer created' });
 
-      // Lights
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 5, 5);
-      scene.add(directionalLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        directionalLight.position.set(2, 3, 2);
+        scene.add(directionalLight);
+        console.log('Lights added');
 
-      // Controls
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.target.set(0, 1.5, 0);
-      controls.update();
+        // Controls - try multiple ways to access OrbitControls
+        const ControlsCtor = (typeof THREE !== 'undefined' && THREE.OrbitControls) 
+          ? THREE.OrbitControls 
+          : (typeof OrbitControls !== 'undefined' ? OrbitControls : null);
+        
+        if (ControlsCtor) {
+          controls = new ControlsCtor(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.target.set(0, 1.3, 0); // Target slightly higher to focus on upper body/head
+          controls.update();
+          console.log('Controls set up');
+        } else {
+          console.log('OrbitControls not available, continuing without controls');
+        }
 
-      // Handle window resize
-      window.addEventListener('resize', onWindowResize);
+        // Handle window resize
+        window.addEventListener('resize', onWindowResize);
 
-      // Animation loop
-      animate();
+        // Animation loop
+        animate();
+        console.log('Animation started');
 
-      // Notify React Native that viewer is ready
-      sendMessage({ type: 'ready' });
+        // Notify React Native that viewer is ready
+        sendMessage({ type: 'ready' });
+        console.log('Ready message sent');
+      } catch (error) {
+        console.error('Init error:', error);
+        sendMessage({ type: 'error', message: 'Init failed: ' + error.message });
+      }
     }
 
     function onWindowResize() {
@@ -80,8 +146,63 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    // Add logging for animation tracks
+    function logAnimationTracks(animation) {
+      if (!animation) return;
+      console.log(`Logging tracks for animation: ${animation.name}`);
+      animation.tracks.forEach((track, index) => {
+        console.log(`Track ${index}: ${track.name}, Type: ${track.ValueTypeName}`);
+      });
+    }
+
+    // Log applied animation tracks for debugging
+    function logAppliedTracks(animation) {
+      if (!animation) return;
+      console.log(`Applied tracks for animation: ${animation.name}`);
+      animation.tracks.forEach((track, index) => {
+        console.log(`Track ${index}: ${track.name}, Type: ${track.ValueTypeName}`);
+      });
+    }
+
+    // Lock hips rotation during animation playback
+    function lockHipsRotation() {
+      if (hipsBone) {
+        hipsBone.rotation.copy(containerOriginalRotation);
+      }
+    }
+
+    // Log bone transformations during animation playback
+    function logBoneTransformations() {
+      if (!hipsBone) {
+        return; // Removed logging for hips bone not found
+      }
+
+      if (mixerRoot) {
+        // Removed logging for mixer root transformations
+      }
+    }
+
+    // Force skeleton update after each frame
+    function updateSkeleton() {
+      if (avatarModel) {
+        avatarModel.traverse((child) => {
+          if (child.isSkinnedMesh) {
+            child.skeleton.update();
+          }
+        });
+      }
+    }
+
+    // Modify animate loop to force skeleton update
     function animate() {
       requestAnimationFrame(animate);
+      
+      const delta = clock.getDelta();
+      
+      // Update animation mixer
+      if (mixer) {
+        mixer.update(delta);
+      }
       
       // Update mouth animation based on audio
       if (analyser && mouthMesh && morphIndex !== null) {
@@ -117,8 +238,98 @@
         jawBone.rotation.x = -value * 0.35;
       }
 
-      controls.update();
+      if (avatarContainer) {
+        avatarContainer.position.copy(containerOriginalPosition);
+        avatarContainer.rotation.copy(containerOriginalRotation);
+      }
+
+      // Lock hips rotation
+      lockHipsRotation();
+
+      // Force skeleton update
+      updateSkeleton();
+
+      // Log transformations for debugging
+      logBoneTransformations();
+
+      if (controls) controls.update();
       renderer.render(scene, camera);
+    }
+
+    // Log bone mapping for debugging
+    function logBoneMapping() {
+      if (!avatarModel) {
+        console.warn('Avatar model not loaded. Cannot log bone mapping.');
+        return;
+      }
+
+      const bones = [];
+      avatarModel.traverse((child) => {
+        if (child.isBone) {
+          bones.push(child.name);
+        }
+      });
+      console.log('=== BONE MAPPING ===');
+      console.log('Total bones:', bones.length);
+      console.log('ALL AVATAR BONE NAMES:', bones.join(', '));
+      sendMessage({ type: 'console', level: 'log', message: `🦴 Found ${bones.length} bones: ${bones.slice(0, 10).join(', ')}${bones.length > 10 ? '...' : ''}` });
+      sendMessage({ type: 'console', level: 'log', message: `🦴 ALL BONES: ${bones.join(', ')}` });
+    }
+
+    // Log skeleton hierarchy
+    function logSkeletonHierarchy(model) {
+      if (!model) {
+        console.warn('Model not loaded. Cannot log skeleton hierarchy.');
+        return;
+      }
+
+      console.log('=== SKELETON HIERARCHY ===');
+      const bones = [];
+      model.traverse((child) => {
+        if (child.isBone) {
+          bones.push({
+            name: child.name,
+            position: child.position,
+            rotation: child.rotation
+          });
+        }
+      });
+      console.log('Skeleton structure:', JSON.stringify(bones.map(b => b.name), null, 2));
+    }
+
+    // Verify mixer target
+    function verifyMixerTarget() {
+      if (mixerRoot) {
+        console.log('=== MIXER TARGET ===');
+        console.log('Mixer root:', mixerRoot.name || mixerRoot.type);
+        sendMessage({ type: 'console', level: 'log', message: `🎯 Mixer target: ${mixerRoot.name || mixerRoot.type}` });
+      } else {
+        console.warn('⚠️ Mixer root not set yet');
+      }
+    }
+
+    // Apply natural standing pose - lower arms to sides
+    function applyNaturalPose() {
+      if (!avatarModel) return;
+
+      console.log('🧍 Applying natural standing pose...');
+      
+      avatarModel.traverse((child) => {
+        if (child.isBone) {
+          const name = child.name;
+          
+          // Very subtle arm lowering - just bring arms down slightly
+          if (name === 'LeftArm') {
+            child.rotation.z = 0.15; // Very small rotation inward
+          }
+          
+          if (name === 'RightArm') {
+            child.rotation.z = -0.15; // Very small rotation inward
+          }
+        }
+      });
+      
+      console.log('✅ Natural pose applied');
     }
 
     function loadAvatar(url) {
@@ -137,7 +348,7 @@
         : `${url}?morphTargets=Oculus Visemes`;
       console.log('Loading with visemes URL:', corsUrl);
 
-      const loader = new GLTFLoader();
+      const loader = new THREE.GLTFLoader();
       
       // Set crossOrigin for textures
       loader.setCrossOrigin('anonymous');
@@ -148,12 +359,44 @@
           console.log('✓ Avatar loaded successfully');
           
           // Remove old model if exists
-          if (avatarModel) {
-            scene.remove(avatarModel);
+          if (avatarContainer) {
+            scene.remove(avatarContainer);
           }
 
           avatarModel = gltf.scene;
-          scene.add(avatarModel);
+          
+          // Create a container to lock position/rotation while allowing skeleton to animate
+          avatarContainer = new THREE.Group();
+          avatarContainer.add(avatarModel);
+          scene.add(avatarContainer);
+          
+          // Center and scale the avatar
+          const box = new THREE.Box3().setFromObject(avatarModel);
+          const center = box.getCenter(new THREE.Vector3());
+          const size = box.getSize(new THREE.Vector3());
+          
+          console.log('Avatar bounds:', { center, size });
+          
+          // Center the avatar container
+          avatarContainer.position.sub(center);
+          avatarContainer.position.y += size.y / 2;
+          
+          // Save container's original transform
+          containerOriginalPosition.copy(avatarContainer.position);
+          containerOriginalRotation.copy(avatarContainer.rotation);
+          
+          // Save world position of the avatar
+          avatarModel.getWorldPosition(avatarWorldPosition);
+          
+          // Save avatar's local transform for animation locking
+          savedAvatarPosition.copy(avatarModel.position);
+          savedAvatarRotation.copy(avatarModel.rotation);
+          savedAvatarScale.copy(avatarModel.scale);
+          
+          console.log('✓ Avatar positioned and added to scene');
+          console.log('✓ Container transform saved:', containerOriginalPosition);
+          console.log('✓ Avatar world position saved:', avatarWorldPosition);
+          console.log('✓ Avatar local transform saved:', savedAvatarPosition);
 
           // Find morph targets for lipsync
           let foundMorph = false;
@@ -208,8 +451,24 @@
 
             // Find jaw bone as fallback
             if (!jawBone && child.isSkinnedMesh && child.skeleton) {
+              // Store the skeleton root for animations
+              if (!mixerRoot && child.skeleton.bones.length > 0) {
+                // Use the skeleton's root bone (usually first bone or Hips)
+                const rootBone = child.skeleton.bones[0];
+                mixerRoot = rootBone;
+                console.log('✓ Found skeleton root for animations:', rootBone.name);
+              }
+              
               for (const bone of child.skeleton.bones) {
                 const name = bone.name.toLowerCase();
+                
+                // Find Hips bone to lock position
+                if (!hipsBone && name.includes('hips')) {
+                  hipsBone = bone;
+                  hipsOriginalPosition.copy(bone.position);
+                  console.log('✓ Found Hips bone:', bone.name, 'original position:', hipsOriginalPosition);
+                }
+                
                 if (name.includes('jaw') || name.includes('mandible')) {
                   jawBone = bone;
                   console.log('✓ Found jaw bone:', bone.name);
@@ -222,6 +481,16 @@
           if (!foundMorph && !jawBone) {
             console.warn('⚠ No morph targets or jaw bone found in model!');
           }
+
+          // Log skeleton hierarchy for debugging
+          console.log('=== LOGGING SKELETON HIERARCHY ===');
+          logSkeletonHierarchy(avatarModel);
+
+          // Verify mixer target
+          verifyMixerTarget();
+
+          // Log bone mapping for debugging
+          logBoneMapping();
 
           sendMessage({ type: 'loaded', success: true });
         },
@@ -239,6 +508,403 @@
           sendMessage({ type: 'error', message: 'Load failed: ' + error.message });
         }
       );
+    }
+
+    // Animation functions
+    function loadAnimation(animationUrl) {
+      console.log('Loading animation from URL:', animationUrl);
+      
+      if (!avatarModel) {
+        console.error('Cannot load animation: no avatar loaded');
+        sendMessage({ type: 'error', message: 'No avatar loaded' });
+        return;
+      }
+
+      // Determine loader based on file extension
+      const isFBX = animationUrl.toLowerCase().endsWith('.fbx');
+      const loader = isFBX ? new THREE.FBXLoader() : new THREE.GLTFLoader();
+      
+      console.log('Using loader:', isFBX ? 'FBXLoader' : 'GLTFLoader');
+
+      loader.load(
+        animationUrl,
+        (loadedData) => {
+          console.log('✓ Animation loaded successfully');
+          
+          let loadedAnimations;
+          
+          if (isFBX) {
+            // FBX loader returns the object directly with animations attached
+            if (!loadedData.animations || loadedData.animations.length === 0) {
+              console.warn('No animations found in FBX file');
+              sendMessage({ type: 'animationLoaded', success: false, message: 'No animations in file' });
+              return;
+            }
+            loadedAnimations = loadedData.animations;
+          } else {
+            // GLTF loader returns an object with animations property
+            if (!loadedData.animations || loadedData.animations.length === 0) {
+              console.warn('No animations found in GLTF file');
+              sendMessage({ type: 'animationLoaded', success: false, message: 'No animations in file' });
+              return;
+            }
+            loadedAnimations = loadedData.animations;
+          }
+
+          // Store animations
+          animations = loadedAnimations;
+          console.log('=== ANIMATION LOADED ===');
+          console.log('Found animations:', animations.map(a => a.name));
+          
+          // Log all animation tracks for debugging
+          animations.forEach((anim, idx) => {
+            console.log(`Animation ${idx}: "${anim.name}"`);
+            console.log(`  Total tracks: ${anim.tracks.length}`);
+            const trackNames = anim.tracks.map(t => t.name.split('.')[0]);
+            const uniqueTracks = [...new Set(trackNames)];
+            console.log(`  Unique bone targets: ${uniqueTracks.join(', ')}`);
+            sendMessage({ 
+              type: 'console', 
+              level: 'log', 
+              message: `🎬 Animation "${anim.name}" has ${anim.tracks.length} tracks targeting: ${uniqueTracks.slice(0, 5).join(', ')}${uniqueTracks.length > 5 ? '...' : ''}` 
+            });
+          });
+          
+          // Create mixer if it doesn't exist
+          if (!mixer) {
+            // Use armature if found, otherwise fall back to avatar model
+            const target = mixerRoot || avatarModel;
+            mixer = new THREE.AnimationMixer(target);
+            console.log('✓ AnimationMixer created with target:', target.name || target.type);
+          }
+
+          sendMessage({ 
+            type: 'animationLoaded', 
+            success: true, 
+            animations: animations.map(a => a.name)
+          });
+        },
+        undefined,
+        (error) => {
+          console.error('Error loading animation:', error);
+          sendMessage({ type: 'error', message: 'Animation load failed: ' + error.message });
+        }
+      );
+    }
+
+    // Compare animation tracks with skeleton bones
+    function compareTracksWithBones(animation) {
+      if (!animation || !avatarModel) {
+        console.warn('Animation or avatar model not available for comparison.');
+        return;
+      }
+
+      console.log('=== COMPARING TRACKS WITH BONES ===');
+      const boneNames = [];
+      avatarModel.traverse((child) => {
+        if (child.isBone) {
+          boneNames.push(child.name);
+        }
+      });
+
+      console.log(`Avatar has ${boneNames.length} bones`);
+      console.log(`Animation has ${animation.tracks.length} tracks`);
+
+      const matched = [];
+      const mismatched = [];
+
+      animation.tracks.forEach((track) => {
+        const trackName = track.name.split('.')[0]; // Extract bone name from track
+        if (boneNames.includes(trackName)) {
+          matched.push(trackName);
+        } else {
+          mismatched.push(trackName);
+        }
+      });
+
+      console.log(`✅ Matched tracks (${matched.length}):`, [...new Set(matched)].join(', '));
+      console.log(`❌ Mismatched tracks (${mismatched.length}):`, [...new Set(mismatched)].join(', '));
+      
+      sendMessage({ 
+        type: 'console', 
+        level: 'warn', 
+        message: `⚠️ Track analysis: ${matched.length} matched, ${mismatched.length} mismatched out of ${animation.tracks.length} total tracks` 
+      });
+
+      if (mismatched.length > 0) {
+        const uniqueMismatched = [...new Set(mismatched)];
+        sendMessage({ 
+          type: 'console', 
+          level: 'error', 
+          message: `❌ Mismatched bone names: ${uniqueMismatched.slice(0, 10).join(', ')}${uniqueMismatched.length > 10 ? '...' : ''}` 
+        });
+      }
+    }
+
+    // Retarget animation to match avatar skeleton
+    function retargetAnimation(animation) {
+      if (!animation || !avatarModel) {
+        console.warn('Cannot retarget: animation or avatar model not available.');
+        return animation;
+      }
+
+      console.log('=== RETARGETING ANIMATION ===');
+      
+      // Build bone name mapping - handles both "mixamorig:" and "mixamorig" prefixes
+      const boneMap = {
+        // WITH colon (mixamorig:)
+        'mixamorig:Hips': 'Hips',
+        'mixamorig:Spine': 'Spine',
+        'mixamorig:Spine1': 'Spine1',
+        'mixamorig:Spine2': 'Spine2',
+        'mixamorig:Neck': 'Neck',
+        'mixamorig:Head': 'Head',
+        'mixamorig:HeadTop_End': 'HeadTop_End',
+        'mixamorig:LeftShoulder': 'LeftShoulder',
+        'mixamorig:LeftArm': 'LeftArm',
+        'mixamorig:LeftForeArm': 'LeftForeArm',
+        'mixamorig:LeftHand': 'LeftHand',
+        'mixamorig:RightShoulder': 'RightShoulder',
+        'mixamorig:RightArm': 'RightArm',
+        'mixamorig:RightForeArm': 'RightForeArm',
+        'mixamorig:RightHand': 'RightHand',
+        'mixamorig:LeftUpLeg': 'LeftUpLeg',
+        'mixamorig:LeftLeg': 'LeftLeg',
+        'mixamorig:LeftFoot': 'LeftFoot',
+        'mixamorig:LeftToeBase': 'LeftToeBase',
+        'mixamorig:RightUpLeg': 'RightUpLeg',
+        'mixamorig:RightLeg': 'RightLeg',
+        'mixamorig:RightFoot': 'RightFoot',
+        'mixamorig:RightToeBase': 'RightToeBase',
+        'mixamorig:LeftHandThumb1': 'LeftHandThumb1',
+        'mixamorig:LeftHandThumb2': 'LeftHandThumb2',
+        'mixamorig:LeftHandThumb3': 'LeftHandThumb3',
+        'mixamorig:LeftHandIndex1': 'LeftHandIndex1',
+        'mixamorig:LeftHandIndex2': 'LeftHandIndex2',
+        'mixamorig:LeftHandIndex3': 'LeftHandIndex3',
+        'mixamorig:LeftHandMiddle1': 'LeftHandMiddle1',
+        'mixamorig:LeftHandMiddle2': 'LeftHandMiddle2',
+        'mixamorig:LeftHandMiddle3': 'LeftHandMiddle3',
+        'mixamorig:LeftHandRing1': 'LeftHandRing1',
+        'mixamorig:LeftHandRing2': 'LeftHandRing2',
+        'mixamorig:LeftHandRing3': 'LeftHandRing3',
+        'mixamorig:LeftHandPinky1': 'LeftHandPinky1',
+        'mixamorig:LeftHandPinky2': 'LeftHandPinky2',
+        'mixamorig:LeftHandPinky3': 'LeftHandPinky3',
+        'mixamorig:RightHandThumb1': 'RightHandThumb1',
+        'mixamorig:RightHandThumb2': 'RightHandThumb2',
+        'mixamorig:RightHandThumb3': 'RightHandThumb3',
+        'mixamorig:RightHandIndex1': 'RightHandIndex1',
+        'mixamorig:RightHandIndex2': 'RightHandIndex2',
+        'mixamorig:RightHandIndex3': 'RightHandIndex3',
+        'mixamorig:RightHandMiddle1': 'RightHandMiddle1',
+        'mixamorig:RightHandMiddle2': 'RightHandMiddle2',
+        'mixamorig:RightHandMiddle3': 'RightHandMiddle3',
+        'mixamorig:RightHandRing1': 'RightHandRing1',
+        'mixamorig:RightHandRing2': 'RightHandRing2',
+        'mixamorig:RightHandRing3': 'RightHandRing3',
+        'mixamorig:RightHandPinky1': 'RightHandPinky1',
+        'mixamorig:RightHandPinky2': 'RightHandPinky2',
+        'mixamorig:RightHandPinky3': 'RightHandPinky3',
+        
+        // WITHOUT colon (mixamorigBoneName) - as seen in your logs
+        'mixamorigHips': 'Hips',
+        'mixamorigSpine': 'Spine',
+        'mixamorigSpine1': 'Spine1',
+        'mixamorigSpine2': 'Spine2',
+        'mixamorigNeck': 'Neck',
+        'mixamorigHead': 'Head',
+        'mixamorigHeadTop_End': 'HeadTop_End',
+        'mixamorigLeftShoulder': 'LeftShoulder',
+        'mixamorigLeftArm': 'LeftArm',
+        'mixamorigLeftForeArm': 'LeftForeArm',
+        'mixamorigLeftHand': 'LeftHand',
+        'mixamorigRightShoulder': 'RightShoulder',
+        'mixamorigRightArm': 'RightArm',
+        'mixamorigRightForeArm': 'RightForeArm',
+        'mixamorigRightHand': 'RightHand',
+        'mixamorigLeftUpLeg': 'LeftUpLeg',
+        'mixamorigLeftLeg': 'LeftLeg',
+        'mixamorigLeftFoot': 'LeftFoot',
+        'mixamorigLeftToeBase': 'LeftToeBase',
+        'mixamorigRightUpLeg': 'RightUpLeg',
+        'mixamorigRightLeg': 'RightLeg',
+        'mixamorigRightFoot': 'RightFoot',
+        'mixamorigRightToeBase': 'RightToeBase',
+        'mixamorigLeftHandThumb1': 'LeftHandThumb1',
+        'mixamorigLeftHandThumb2': 'LeftHandThumb2',
+        'mixamorigLeftHandThumb3': 'LeftHandThumb3',
+        'mixamorigLeftHandIndex1': 'LeftHandIndex1',
+        'mixamorigLeftHandIndex2': 'LeftHandIndex2',
+        'mixamorigLeftHandIndex3': 'LeftHandIndex3',
+        'mixamorigLeftHandMiddle1': 'LeftHandMiddle1',
+        'mixamorigLeftHandMiddle2': 'LeftHandMiddle2',
+        'mixamorigLeftHandMiddle3': 'LeftHandMiddle3',
+        'mixamorigLeftHandRing1': 'LeftHandRing1',
+        'mixamorigLeftHandRing2': 'LeftHandRing2',
+        'mixamorigLeftHandRing3': 'LeftHandRing3',
+        'mixamorigLeftHandPinky1': 'LeftHandPinky1',
+        'mixamorigLeftHandPinky2': 'LeftHandPinky2',
+        'mixamorigLeftHandPinky3': 'LeftHandPinky3',
+        'mixamorigRightHandThumb1': 'RightHandThumb1',
+        'mixamorigRightHandThumb2': 'RightHandThumb2',
+        'mixamorigRightHandThumb3': 'RightHandThumb3',
+        'mixamorigRightHandIndex1': 'RightHandIndex1',
+        'mixamorigRightHandIndex2': 'RightHandIndex2',
+        'mixamorigRightHandIndex3': 'RightHandIndex3',
+        'mixamorigRightHandMiddle1': 'RightHandMiddle1',
+        'mixamorigRightHandMiddle2': 'RightHandMiddle2',
+        'mixamorigRightHandMiddle3': 'RightHandMiddle3',
+        'mixamorigRightHandRing1': 'RightHandRing1',
+        'mixamorigRightHandRing2': 'RightHandRing2',
+        'mixamorigRightHandRing3': 'RightHandRing3',
+        'mixamorigRightHandPinky1': 'RightHandPinky1',
+        'mixamorigRightHandPinky2': 'RightHandPinky2',
+        'mixamorigRightHandPinky3': 'RightHandPinky3',
+        
+        // Extra finger bones (4th segments) - map to RPM equivalents
+        'mixamorigLeftHandThumb4': 'LeftHandThumb4',
+        'mixamorigLeftHandIndex4': 'LeftHandIndex4',
+        'mixamorigLeftHandMiddle4': 'LeftHandMiddle4',
+        'mixamorigLeftHandRing4': 'LeftHandRing4',
+        'mixamorigLeftHandPinky4': 'LeftHandPinky4',
+        'mixamorigRightHandThumb4': 'RightHandThumb4',
+        'mixamorigRightHandIndex4': 'RightHandIndex4',
+        'mixamorigRightHandMiddle4': 'RightHandMiddle4',
+        'mixamorigRightHandRing4': 'RightHandRing4',
+        'mixamorigRightHandPinky4': 'RightHandPinky4',
+        
+        // Toe end bones
+        'mixamorigLeftToe_End': 'LeftToe_End',
+        'mixamorigRightToe_End': 'RightToe_End',
+      };
+
+      // Get actual bone names from avatar
+      const avatarBones = [];
+      avatarModel.traverse((child) => {
+        if (child.isBone) {
+          avatarBones.push(child.name);
+        }
+      });
+
+      // Clone the animation
+      const retargetedTracks = [];
+      let mappedCount = 0;
+      let unmappedCount = 0;
+
+      animation.tracks.forEach((track) => {
+        const parts = track.name.split('.');
+        const boneName = parts[0];
+        const property = parts[1];
+
+        // Try to map the bone name
+        let mappedBoneName = boneMap[boneName] || boneName;
+
+        // Special handling for Hips to prevent avatar from flying away
+        if (mappedBoneName === 'Hips' && property === 'position') {
+          console.log('⏭️ Skipping Hips.position (prevents flying/disappearing)');
+          unmappedCount++;
+          return; // Skip position completely - avatar stays in place
+        }
+
+        // Skip Hips rotation to prevent spinning
+        if (mappedBoneName === 'Hips' && property === 'quaternion') {
+          console.log('🚫 Skipping Hips.quaternion to prevent rotation');
+          unmappedCount++;
+          return;
+        }
+
+        // Check if the mapped bone exists in avatar
+        if (avatarBones.includes(mappedBoneName)) {
+          // Create new track with mapped bone name
+          const newTrackName = `${mappedBoneName}.${property}`;
+          const TrackType = track.constructor;
+          const newTrack = new TrackType(newTrackName, track.times, track.values);
+          retargetedTracks.push(newTrack);
+          mappedCount++;
+        } else {
+          // Try case-insensitive match
+          const lowerBoneName = mappedBoneName.toLowerCase();
+          const match = avatarBones.find(b => b.toLowerCase() === lowerBoneName);
+          
+          if (match) {
+            const newTrackName = `${match}.${property}`;
+            const TrackType = track.constructor;
+            const newTrack = new TrackType(newTrackName, track.times, track.values);
+            retargetedTracks.push(newTrack);
+            mappedCount++;
+          } else {
+            console.warn(`Could not map bone: ${boneName} -> ${mappedBoneName}`);
+            unmappedCount++;
+          }
+        }
+      });
+
+      console.log(`Retargeting complete: ${mappedCount} tracks mapped, ${unmappedCount} tracks unmapped`);
+      sendMessage({ 
+        type: 'console', 
+        level: 'log', 
+        message: `🔄 Retargeted animation: ${mappedCount}/${animation.tracks.length} tracks mapped successfully` 
+      });
+
+      // Create new animation clip with retargeted tracks
+      const retargetedClip = new THREE.AnimationClip(animation.name, animation.duration, retargetedTracks);
+      return retargetedClip;
+    }
+
+    // Temporarily disable track filtering for testing
+    function playAnimation(animationName, loop = true, fadeDuration = 0.5) {
+      if (!mixer || animations.length === 0) {
+        console.error('No animations loaded');
+        return;
+      }
+
+      const animation = animationName 
+        ? animations.find(a => a.name === animationName)
+        : animations[0];
+
+      if (!animation) {
+        console.error('Animation not found:', animationName);
+        return;
+      }
+
+      console.log('=== PLAYING ANIMATION ===');
+      console.log('Animation name:', animation.name);
+
+      // Compare animation tracks with skeleton bones
+      compareTracksWithBones(animation);
+
+      // Retarget the animation to match avatar skeleton
+      const retargetedAnimation = retargetAnimation(animation);
+
+      if (currentAnimation) {
+        currentAnimation.fadeOut(fadeDuration);
+      }
+
+      const action = mixer.clipAction(retargetedAnimation);
+      action.reset();
+      action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce);
+      action.fadeIn(fadeDuration);
+      action.play();
+
+      currentAnimation = action;
+      isAnimationPlaying = true;
+
+      console.log('✅ Animation playing with retargeted clip');
+      sendMessage({ type: 'animationPlaying', name: retargetedAnimation.name });
+    }
+
+    function stopAnimation(fadeDuration = 0.5) {
+      if (currentAnimation) {
+        currentAnimation.fadeOut(fadeDuration);
+        setTimeout(() => {
+          currentAnimation.stop();
+          currentAnimation = null;
+          isAnimationPlaying = false;
+        }, fadeDuration * 1000);
+        
+        sendMessage({ type: 'animationStopped' });
+      }
     }
 
     function playAudio(audioUrl) {
@@ -321,15 +987,6 @@
       }
     }
 
-    function sendMessage(data) {
-      // For React Native WebView
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify(data));
-      }
-      // For debugging in browser
-      console.log('Message:', data);
-    }
-
     // Listen for messages from React Native
     window.addEventListener('message', (event) => {
       try {
@@ -357,6 +1014,15 @@
         case 'loadAvatar':
           loadAvatar(data.url);
           break;
+        case 'loadAnimation':
+          loadAnimation(data.url);
+          break;
+        case 'playAnimation':
+          playAnimation(data.name, data.loop !== false, data.fadeDuration || 0.5);
+          break;
+        case 'stopAnimation':
+          stopAnimation(data.fadeDuration || 0.5);
+          break;
         case 'playAudio':
           playAudio(data.url);
           break;
@@ -375,8 +1041,12 @@
       }
     }
 
-    // Initialize on load
-    init();
+    // Initialize on load - SINGLE init call only
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, initializing viewer...');
+      init();
+      console.log('Viewer initialized');
+    });
   </script>
 </body>
 </html>

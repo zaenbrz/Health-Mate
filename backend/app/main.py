@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth_routes, chat_routes, profile_routes, appointment_routes, scan_routes, speech_routes, doctor_availability_routes, avatar_proxy_routes
+from app.routes import auth_routes, chat_routes, profile_routes, appointment_routes, scan_routes, speech_routes, doctor_availability_routes, avatar_proxy_routes, animation_routes
 import logging
 import time
 
@@ -45,6 +45,7 @@ app.include_router(scan_routes.router, prefix="/scan", tags=["Scan Analysis"])
 app.include_router(doctor_availability_routes.router, prefix="/doctor-availability", tags=["Doctor Availability"])
 app.include_router(speech_routes.router, prefix="/speech", tags=["Speech"])
 app.include_router(avatar_proxy_routes.router, prefix="/avatar", tags=["Avatar"])
+app.include_router(animation_routes.router, prefix="/animations", tags=["Animations"])
 
 @app.get("/")
 async def root():

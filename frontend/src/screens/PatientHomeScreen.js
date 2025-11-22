@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
 import AvatarViewer3D from '../components/AvatarViewer3D';
-import LanguageSelector from '../components/LanguageSelector';
+import VoiceChat from '../components/VoiceChat';
+import SideDrawer from '../components/SideDrawer';
 
 export default function PatientHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [patientName, setPatientName] = useState('');
+  const [patientEmail, setPatientEmail] = useState('');
   const [avatarId, setAvatarId] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [aiResponse, setAiResponse] = useState(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const avatarViewerRef = useRef(null);
 
   useEffect(() => {
@@ -31,10 +35,11 @@ export default function PatientHomeScreen({ navigation }) {
   }
 
   async function handleLanguageChange(languageCode) {
+    console.log('🌐 Changing language from', selectedLanguage, 'to', languageCode);
     setSelectedLanguage(languageCode);
     try {
       await AsyncStorage.setItem('preferred_language', languageCode);
-      console.log('Language changed to:', languageCode);
+      console.log('✅ Language changed to:', languageCode);
     } catch (error) {
       console.error('Error saving language preference:', error);
     }
@@ -58,20 +63,60 @@ export default function PatientHomeScreen({ navigation }) {
       if (response.ok) {
         const profile = await response.json();
         setPatientName(profile.name || 'User');
+        setPatientEmail(profile.email || '');
         setAvatarId(profile.avatar_id);
         setAvatarUrl(profile.avatar_url);
         
         console.log('Profile loaded:', {
           name: profile.name,
+          email: profile.email,
           avatar_id: profile.avatar_id,
           avatar_url: profile.avatar_url
         });
+
+        // Debug avatar URL
+        if (!profile.avatar_url) {
+          console.warn('⚠️ No avatar_url in profile! User needs to create an avatar.');
+        } else {
+          console.log('✅ Avatar URL found:', profile.avatar_url);
+        }
+      } else {
+        console.error('Profile fetch failed:', response.status);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleLogout() {
+    try {
+      await AsyncStorage.removeItem('access_token');
+      await AsyncStorage.removeItem('refresh_token');
+      navigation.navigate('Login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  }
+
+  async function testAnimation() {
+    if (!avatarViewerRef.current) {
+      console.log('Avatar viewer not ready');
+      return;
+    }
+
+    const animationUrl = `${CONFIG.API_URL}/animations/thoughtful.fbx`;
+    console.log('🎬 Loading animation:', animationUrl);
+
+    // Load the animation
+    avatarViewerRef.current.loadAnimation(animationUrl);
+
+    // Play it after a short delay
+    setTimeout(() => {
+      console.log('▶️ Playing animation');
+      avatarViewerRef.current.playAnimation(null, false, 0.3);
+    }, 1000);
   }
 
   if (loading) {
@@ -84,39 +129,91 @@ export default function PatientHomeScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <SideDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        patientName={patientName}
+        patientEmail={patientEmail}
+        selectedLanguage={selectedLanguage}
+        onLanguageChange={(lang) => {
+          handleLanguageChange(lang);
+          setTimeout(() => setDrawerVisible(false), 300);
+        }}
+        onManageAvatar={() => {
+          setDrawerVisible(false);
+          navigation.navigate('AvatarSelection');
+        }}
+        onEditProfile={() => {
+          setDrawerVisible(false);
+          navigation.navigate('CompleteProfile');
+        }}
+        onLogout={handleLogout}
+      />
+      
       <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
         <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.hamburgerButton}
+            onPress={() => setDrawerVisible(true)}
+          >
+            <Text style={styles.hamburgerIcon}>☰</Text>
+          </TouchableOpacity>
+          
           <Text style={styles.greeting}>Hi {patientName},</Text>
-          <Text style={styles.subtitle}>How can I help you?</Text>
+          <ScrollView 
+            style={styles.subtitleContainer}
+            contentContainerStyle={styles.subtitleContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.subtitle}>
+              {aiResponse || "How can I help you?"}
+            </Text>
+          </ScrollView>
         </View>
         
-        <LanguageSelector
-          selectedLanguage={selectedLanguage}
-          onLanguageChange={handleLanguageChange}
-        />
-        
-        {avatarUrl && (
+        {avatarUrl ? (
           <View style={styles.avatarContainer}>
             <AvatarViewer3D
               ref={avatarViewerRef}
               avatarUrl={avatarUrl}
               style={styles.avatarViewer}
             />
+            
+            {/* Test Animation Button */}
+            <TouchableOpacity 
+              style={styles.testAnimButton}
+              onPress={testAnimation}
+            >
+              <Text style={styles.testAnimText}>Test</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.avatarContainer}>
+            <View style={styles.noAvatarPlaceholder}>
+              <Text style={styles.noAvatarText}>No Avatar</Text>
+              <TouchableOpacity 
+                style={styles.createAvatarButton}
+                onPress={() => navigation.navigate('AvatarSelection')}
+              >
+                <Text style={styles.createAvatarButtonText}>Create Avatar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </LinearGradient>
 
       <View style={styles.bottomSection}>
-        <TouchableOpacity 
-          style={styles.micButton}
-          onPress={() => {
+        <VoiceChat 
+          selectedLanguage={selectedLanguage}
+          onResponse={(response) => {
+            console.log('AI Response received:', response);
+            setAiResponse(response);
+            // Optional: trigger avatar lip-sync
             if (avatarViewerRef.current) {
-              avatarViewerRef.current.testMorph(1, 1000);
+              avatarViewerRef.current.testMorph(0.8, 2000);
             }
           }}
-        >
-          <Text style={styles.micIcon}>🎤</Text>
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );
@@ -140,18 +237,40 @@ const styles = StyleSheet.create({
   headerTop: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  hamburgerButton: {
+    position: 'absolute',
+    top: 0,
+    left: 10,
+    padding: 10,
+    zIndex: 10,
+  },
+  hamburgerIcon: {
+    fontSize: 28,
+    color: '#1e3a8a',
+    fontWeight: '600',
   },
   greeting: {
     fontSize: 24,
     fontStyle: 'italic',
     color: '#1e3a8a',
-    marginBottom: 5,
+    marginBottom: 8,
+  },
+  subtitleContainer: {
+    maxHeight: 80,
+    width: '100%',
+  },
+  subtitleContent: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   subtitle: {
-    fontSize: 24,
+    fontSize: 16,
     fontStyle: 'italic',
     color: '#1e3a8a',
+    textAlign: 'center',
+    lineHeight: 22,
   },
   avatarContainer: {
     flex: 1,
@@ -163,6 +282,25 @@ const styles = StyleSheet.create({
   avatarViewer: {
     width: '100%',
     height: '100%',
+  },
+  testAnimButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  testAnimText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   bottomSection: {
     position: 'absolute',
@@ -186,6 +324,29 @@ const styles = StyleSheet.create({
   },
   micIcon: {
     fontSize: 40,
+  },
+  noAvatarPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  noAvatarText: {
+    fontSize: 18,
+    color: '#1e3a8a',
+    fontWeight: '600',
+    marginBottom: 15,
+  },
+  createAvatarButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  createAvatarButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   avatarPlaceholder: {
     width: 120,
