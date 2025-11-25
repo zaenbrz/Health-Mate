@@ -204,38 +204,43 @@
         mixer.update(delta);
       }
       
-      // Update mouth animation based on audio
-      if (analyser && mouthMesh && morphIndex !== null) {
-        const dataArray = new Uint8Array(analyser.fftSize);
-        analyser.getByteTimeDomainData(dataArray);
-        
-        // Calculate RMS amplitude
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          const v = (dataArray[i] - 128) / 128;
-          sum += v * v;
+      // Update visemes for lip-sync (priority over audio analysis)
+      updateVisemes();
+      
+      // Audio analysis lip-sync (only if no viseme schedule)
+      if (visemeSchedule.length === 0) {
+        if (analyser && mouthMesh && morphIndex !== null) {
+          const dataArray = new Uint8Array(analyser.fftSize);
+          analyser.getByteTimeDomainData(dataArray);
+          
+          // Calculate RMS amplitude
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = (dataArray[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
+          
+          // Apply to morph target
+          if (mouthMesh.morphTargetInfluences) {
+            mouthMesh.morphTargetInfluences[morphIndex] = value;
+          }
+        } else if (analyser && jawBone) {
+          // Fallback: animate jaw bone
+          const dataArray = new Uint8Array(analyser.fftSize);
+          analyser.getByteTimeDomainData(dataArray);
+          
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = (dataArray[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / dataArray.length);
+          const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
+          
+          jawBone.rotation.x = -value * 0.35;
         }
-        const rms = Math.sqrt(sum / dataArray.length);
-        const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
-        
-        // Apply to morph target
-        if (mouthMesh.morphTargetInfluences) {
-          mouthMesh.morphTargetInfluences[morphIndex] = value;
-        }
-      } else if (analyser && jawBone) {
-        // Fallback: animate jaw bone
-        const dataArray = new Uint8Array(analyser.fftSize);
-        analyser.getByteTimeDomainData(dataArray);
-        
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          const v = (dataArray[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / dataArray.length);
-        const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
-        
-        jawBone.rotation.x = -value * 0.35;
       }
 
       if (avatarContainer) {
@@ -957,6 +962,213 @@
         });
     }
 
+    // Viseme mapping for Ready Player Me
+    const VISEME_MORPH_MAP = {
+      'viseme_sil': 'viseme_sil',
+      'viseme_PP': 'viseme_PP',
+      'viseme_FF': 'viseme_FF',
+      'viseme_TH': 'viseme_TH',
+      'viseme_DD': 'viseme_DD',
+      'viseme_kk': 'viseme_kk',
+      'viseme_CH': 'viseme_CH',
+      'viseme_SS': 'viseme_SS',
+      'viseme_nn': 'viseme_nn',
+      'viseme_RR': 'viseme_RR',
+      'viseme_aa': 'viseme_aa',
+      'viseme_E': 'viseme_E',
+      'viseme_I': 'viseme_I',
+      'viseme_O': 'viseme_O',
+      'viseme_U': 'viseme_U'
+    };
+
+    let visemeSchedule = [];
+    let visemeStartTime = 0;
+
+    function playAudioWithLipsync(audioUrl, visemes) {
+      console.log('🎤 Playing audio with lip-sync:', audioUrl);
+      console.log('📊 Viseme count:', visemes ? visemes.length : 0);
+      console.log('📊 First 3 visemes:', visemes ? visemes.slice(0, 3) : 'none');
+      console.log('📊 mouthMesh available:', !!mouthMesh);
+      console.log('📊 mouthMesh morphTargetDictionary:', mouthMesh ? Object.keys(mouthMesh.morphTargetDictionary || {}) : 'no mesh');
+
+      // Create audio context if not exists
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      // Resume context if suspended
+      if (audioContext.state === 'suspended') {
+        console.log('⏸️ AudioContext suspended, resuming...');
+        audioContext.resume().then(() => {
+          console.log('▶️ AudioContext resumed');
+        });
+      }
+
+      // Store viseme schedule (but don't apply yet)
+      visemeSchedule = visemes || [];
+      visemeStartTime = 0; // Will be set when audio actually starts
+      console.log('📊 Viseme schedule prepared with', visemeSchedule.length, 'visemes');
+
+      // Fetch and decode audio
+      fetch(audioUrl)
+        .then(response => response.arrayBuffer())
+        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+        .then(audioBuffer => {
+          // Stop previous audio if playing
+          if (audioSource) {
+            try { 
+              audioSource.stop(); 
+              audioSource.disconnect();
+            } catch (e) {}
+          }
+
+          // Create new source
+          audioSource = audioContext.createBufferSource();
+          audioSource.buffer = audioBuffer;
+
+          // Connect to destination
+          audioSource.connect(audioContext.destination);
+
+          // Set start time and play immediately
+          visemeStartTime = audioContext.currentTime;
+          audioSource.start(0);
+          console.log('▶️ Audio started at time:', visemeStartTime);
+          console.log('📊 First viseme at:', visemeSchedule[0]?.time, 'type:', visemeSchedule[0]?.type);
+
+          audioSource.onended = () => {
+            console.log('🔚 Audio ended');
+            sendMessage({ type: 'audioEnded' });
+            resetVisemes();
+            visemeSchedule = [];
+            visemeStartTime = 0;
+          };
+
+          sendMessage({ type: 'audioPlaying' });
+        })
+        .catch(error => {
+          console.error('❌ Error playing audio with lipsync:', error);
+          sendMessage({ type: 'error', message: 'Failed to play audio: ' + error.message });
+          visemeSchedule = [];
+        });
+    }
+
+    function updateVisemes() {
+      if (!avatarModel || visemeSchedule.length === 0 || !audioContext || visemeStartTime === 0) {
+        return; // Don't apply visemes until audio has started
+      }
+
+      const currentTime = audioContext.currentTime - visemeStartTime;
+
+      // Only apply visemes if we're past the start time
+      if (currentTime < 0) {
+        return;
+      }
+
+      // Find the current viseme
+      let currentViseme = null;
+      for (let i = 0; i < visemeSchedule.length; i++) {
+        if (visemeSchedule[i].time <= currentTime) {
+          currentViseme = visemeSchedule[i];
+        } else {
+          break;
+        }
+      }
+
+      if (currentViseme) {
+        applyViseme(currentViseme.type);
+      }
+    }
+
+    function applyViseme(visemeName) {
+      if (!avatarModel) {
+        console.warn('⚠️ Cannot apply viseme - no avatar model');
+        return;
+      }
+
+      // Only apply to meshes that have mouth/face-related morph targets (not eyes)
+      let appliedCount = 0;
+      avatarModel.traverse((child) => {
+        if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+          // Skip eye meshes - check mesh name
+          const meshName = child.name.toLowerCase();
+          if (meshName.includes('eye') && !meshName.includes('head')) {
+            return; // Skip eye meshes
+          }
+
+          // Check if this mesh has ANY viseme morph targets
+          const hasVisemeMorphs = Object.keys(VISEME_MORPH_MAP).some(viseme => {
+            const morphName = VISEME_MORPH_MAP[viseme];
+            return child.morphTargetDictionary[morphName] !== undefined;
+          });
+
+          if (!hasVisemeMorphs) {
+            return; // Skip meshes without viseme morphs
+          }
+
+          // Reset all viseme morphs
+          Object.keys(VISEME_MORPH_MAP).forEach(viseme => {
+            const morphName = VISEME_MORPH_MAP[viseme];
+            const morphIndex = child.morphTargetDictionary[morphName];
+            if (morphIndex !== undefined) {
+              child.morphTargetInfluences[morphIndex] = 0;
+            }
+          });
+
+          // Apply current viseme with natural strength (0.6 = 60%)
+          const morphName = VISEME_MORPH_MAP[visemeName] || visemeName;
+          if (morphName) {
+            const morphIndex = child.morphTargetDictionary[morphName];
+            if (morphIndex !== undefined) {
+              child.morphTargetInfluences[morphIndex] = 0.6;  // Natural movement strength
+              appliedCount++;
+              if (appliedCount === 1) {
+                console.log('✅ Applied viseme:', visemeName, 'to mesh:', child.name, 'index:', morphIndex, 'value:', child.morphTargetInfluences[morphIndex]);
+              }
+            }
+          }
+        }
+      });
+
+      if (appliedCount === 0) {
+        console.warn('⚠️ Viseme not applied to any mesh:', visemeName);
+      }
+    }
+
+    function resetVisemes() {
+      if (!avatarModel) {
+        return;
+      }
+
+      // Reset all viseme morphs on face meshes only (skip eyes)
+      avatarModel.traverse((child) => {
+        if (child.isMesh && child.morphTargetDictionary && child.morphTargetInfluences) {
+          // Skip eye meshes
+          const meshName = child.name.toLowerCase();
+          if (meshName.includes('eye') && !meshName.includes('head')) {
+            return;
+          }
+
+          Object.keys(VISEME_MORPH_MAP).forEach(viseme => {
+            const morphName = VISEME_MORPH_MAP[viseme];
+            const morphIndex = child.morphTargetDictionary[morphName];
+            if (morphIndex !== undefined) {
+              child.morphTargetInfluences[morphIndex] = 0;
+            }
+          });
+        }
+      });
+    }
+
+    // Expose test function for debugging visemes
+    window.testViseme = function(visemeName = 'viseme_aa', duration = 1000) {
+      console.log('🧪 Testing viseme:', visemeName);
+      applyViseme(visemeName);
+      setTimeout(() => {
+        resetVisemes();
+        console.log('🧪 Viseme test complete');
+      }, duration);
+    };
+
     function testMorph(strength = 1, duration = 800) {
       console.log('TEST MORPH called with strength:', strength, 'duration:', duration);
       
@@ -1026,6 +1238,9 @@
         case 'playAudio':
           playAudio(data.url);
           break;
+        case 'playAudioWithLipsync':
+          playAudioWithLipsync(data.audioUrl, data.visemes);
+          break;
         case 'testMorph':
           testMorph(data.strength || 1, data.duration || 800);
           break;
@@ -1035,6 +1250,8 @@
             audioSource = null;
             analyser = null;
           }
+          resetVisemes();
+          visemeSchedule = [];
           break;
         default:
           console.warn('Unknown message type:', data.type);

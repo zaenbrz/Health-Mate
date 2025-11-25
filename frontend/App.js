@@ -9,6 +9,8 @@ import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
 import AvatarSelectionScreen from './src/screens/AvatarSelectionScreen';
 import AvatarCustomizationScreen from './src/screens/AvatarCustomizationScreen';
 import PatientHomeScreen from './src/screens/PatientHomeScreen';
+import ScanAnalysisScreen from './src/screens/ScanAnalysisScreen';
+import ScanReportScreen from './src/screens/ScanReportScreen';
 
 const Stack = createStackNavigator();
 
@@ -22,6 +24,8 @@ export default function App() {
         <Stack.Screen name="AvatarSelection" component={AvatarSelectionScreen} options={{ title: 'Choose Avatar', headerShown: false }} />
         <Stack.Screen name="AvatarCustomization" component={AvatarCustomizationScreen} options={{ title: 'Customize Avatar', headerShown: false }} />
         <Stack.Screen name="PatientHome" component={PatientHomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ScanAnalysis" component={ScanAnalysisScreen} options={{ title: 'Scan Analysis', headerShown: false }} />
+        <Stack.Screen name="ScanReport" component={ScanReportScreen} options={{ title: 'Scan Report', headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

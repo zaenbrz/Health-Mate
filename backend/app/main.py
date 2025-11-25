@@ -1,14 +1,23 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.routes import auth_routes, chat_routes, profile_routes, appointment_routes, scan_routes, speech_routes, doctor_availability_routes, avatar_proxy_routes, animation_routes
 import logging
 import time
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="HealthMate API", version="1.0.0")
+
+# Create media directories if they don't exist
+media_dir = Path("media")
+audio_dir = media_dir / "audio"
+audio_dir.mkdir(parents=True, exist_ok=True)
+logger.info(f"Media directory created/verified: {media_dir}")
+logger.info(f"Audio directory created/verified: {audio_dir}")
 
 # Add request logging middleware
 @app.middleware("http")
@@ -46,6 +55,10 @@ app.include_router(doctor_availability_routes.router, prefix="/doctor-availabili
 app.include_router(speech_routes.router, prefix="/speech", tags=["Speech"])
 app.include_router(avatar_proxy_routes.router, prefix="/avatar", tags=["Avatar"])
 app.include_router(animation_routes.router, prefix="/animations", tags=["Animations"])
+
+# Mount static file directories
+app.mount("/media", StaticFiles(directory="media"), name="media")
+logger.info("Static media files mounted at /media")
 
 @app.get("/")
 async def root():

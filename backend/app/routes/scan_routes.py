@@ -1,23 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import List
-from ..services.scan_service import ScanAnalysisService
-from ..services.segmentation_service import SegmentationService
-from ..services.breast_segmentation_service import BreastSegmentationService
+from ..services.models_service import BrainSegmentationService, kidney_segmentation_service, breast_segmentation_service, pancreas_segmentation_service, liver_segmentation_service
 from ..models.scan_report import ScanReportCreate, ScanReportResponse, ScanReportUpdate, ScanReportModel
 from ..utils.jwt import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Scan Analysis"])
-
-class ScanRequest(BaseModel):
-    image_data: str
-    scan_type: str
-    target_area: str
-
-class SegmentRequest(BaseModel):
-    image_data: str
 
 class TwoModalityRequest(BaseModel):
     flair_image: str
@@ -26,44 +16,12 @@ class TwoModalityRequest(BaseModel):
 class BreastSegmentRequest(BaseModel):
     image_data: str
 
-# Initialize services
-scan_service = ScanAnalysisService()
-segmentation_service = SegmentationService()
-breast_segmentation_service = BreastSegmentationService()
+class SegmentRequest(BaseModel):
+    image_data: str
 
-@router.post("/analyze")
-async def analyze_medical_scan(
-    request: ScanRequest,
-    current_user=Depends(get_current_user)
-):
-    """Analyze a medical scan"""
-    try:
-        result = await scan_service.analyze_scan(
-            request.image_data, 
-            request.scan_type, 
-            request.target_area
-        )
-        return result
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error analyzing scan: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@router.post("/segment")
-async def segment_scan(
-    request: SegmentRequest,
-    current_user=Depends(get_current_user)
-):
-    """Segment a medical scan"""
-    try:
-        result = await segmentation_service.segment_image(request.image_data)
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error segmenting scan: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+# Initialize brain segmentation service for two-modality endpoint
+segmentation_service = BrainSegmentationService()
+# Other services are imported as singletons from models_service
 
 @router.post("/segment/two-modalities")
 async def segment_two_modalities(
@@ -105,12 +63,15 @@ async def segment_two_modalities(
                 report_result = ScanReportModel.create_scan_report(report_data)
                 if report_result.get("success"):
                     result["report_id"] = report_result.get("report_id")
-                    logger.info(f"Scan report saved with ID: {report_result.get('report_id')}")
+                    result["saved_to_database"] = True
+                    logger.info(f"Brain MRI scan report saved with ID: {report_result.get('report_id')}")
                 else:
-                    logger.warning(f"Failed to save scan report: {report_result.get('error')}")
+                    logger.warning(f"Failed to save brain MRI scan report: {report_result.get('error')}")
+                    result["saved_to_database"] = False
                     
             except Exception as save_error:
-                logger.error(f"Error saving scan report: {str(save_error)}")
+                logger.error(f"Error saving brain MRI scan report: {str(save_error)}")
+                result["saved_to_database"] = False
                 # Don't fail the main request if report saving fails
         
         logger.info("Brain MRI segmentation completed successfully")
@@ -131,7 +92,7 @@ async def segment_breast_scan(
     
     try:
         logger.info("Starting breast ultrasound segmentation...")
-        result = await breast_segmentation_service.segment_breast_ultrasound(request.image_data)
+        result = await breast_segmentation_service.segment_image(request.image_data)
         
         # Auto-save scan report if segmentation was successful
         if result.get("success", False):
@@ -160,12 +121,15 @@ async def segment_breast_scan(
                 report_result = ScanReportModel.create_scan_report(report_data)
                 if report_result.get("success"):
                     result["report_id"] = report_result.get("report_id")
-                    logger.info(f"Scan report saved with ID: {report_result.get('report_id')}")
+                    result["saved_to_database"] = True
+                    logger.info(f"Breast ultrasound scan report saved with ID: {report_result.get('report_id')}")
                 else:
-                    logger.warning(f"Failed to save scan report: {report_result.get('error')}")
+                    logger.warning(f"Failed to save breast ultrasound scan report: {report_result.get('error')}")
+                    result["saved_to_database"] = False
                     
             except Exception as save_error:
-                logger.error(f"Error saving scan report: {str(save_error)}")
+                logger.error(f"Error saving breast ultrasound scan report: {str(save_error)}")
+                result["saved_to_database"] = False
                 # Don't fail the main request if report saving fails
         
         logger.info("Breast segmentation completed successfully")
@@ -174,6 +138,67 @@ async def segment_breast_scan(
     except Exception as e:
         logger.error(f"Error segmenting breast scan: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/segment/liver", response_model=dict)
+async def segment_liver_ct(
+    request: SegmentRequest,
+    current_user=Depends(get_current_user)
+):
+    """Segment liver from CT scan using U-Net ResNet50 model"""
+    try:
+        logger.info(f"Liver CT segmentation request received - User: {current_user.get('sub', 'unknown')}")
+        logger.info(f"Request data - Image length: {len(request.image_data)}")
+        
+        logger.info("Starting liver CT segmentation...")
+        result = await liver_segmentation_service.segment_image(request.image_data)
+        
+        # Auto-save scan report if segmentation was successful
+        if result.get("success", False):
+            try:
+                from datetime import datetime
+                from ..models.scan_report import ScanReportCreate
+                
+                # Extract patient email from current user
+                patient_email = current_user.get('sub', 'unknown@example.com')
+                
+                # Create scan report data with null safety
+                report_data = ScanReportCreate(
+                    patient_email=patient_email,
+                    scan_type="ct_scan",
+                    scan_date=datetime.utcnow(),
+                    segmentation_data={
+                        "statistics": result.get("statistics", {}) or {},
+                        "class_statistics": result.get("class_statistics", {}) or {}
+                    },
+                    insights=result.get("insights", []) or [],
+                    recommendations=result.get("recommendations", []) or [],
+                    segmentation_overlay=result.get("segmentation_mask", "") or ""
+                )
+                
+                # Save to database
+                report_result = ScanReportModel.create_scan_report(report_data)
+                if report_result.get("success"):
+                    result["report_id"] = report_result.get("report_id")
+                    result["saved_to_database"] = True
+                    logger.info(f"Liver CT scan report saved with ID: {report_result.get('report_id')}")
+                else:
+                    logger.warning(f"Failed to save liver CT scan report: {report_result.get('error')}")
+                    result["saved_to_database"] = False
+                    
+            except Exception as save_error:
+                logger.error(f"Error saving liver CT scan report: {str(save_error)}")
+                result["saved_to_database"] = False
+                # Don't fail the main request if report saving fails
+        
+        logger.info("Liver CT segmentation completed successfully")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in liver segmentation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Liver segmentation failed: {str(e)}"
+        )
 
 # Scan Report Routes
 @router.post("/reports/create", response_model=dict)
@@ -312,4 +337,125 @@ async def delete_scan_report(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
+        )
+
+@router.post("/segment/kidney", response_model=dict)
+async def segment_kidney_ct(
+    request: SegmentRequest,
+    current_user=Depends(get_current_user)
+):
+    """Segment kidney from CT scan using ResUNet model"""
+    try:
+        logger.info(f"Kidney CT segmentation request received - User: {current_user.get('sub', 'unknown')}")
+        logger.info(f"Request data - Image length: {len(request.image_data)}")
+        
+        logger.info("Starting kidney CT segmentation...")
+        result = await kidney_segmentation_service.segment_image(request.image_data)
+        
+        # Auto-save scan report if segmentation was successful
+        if result.get("success", False):
+            try:
+                from datetime import datetime
+                from ..models.scan_report import ScanReportCreate
+                
+                # Extract patient email from current user
+                patient_email = current_user.get('sub', 'unknown@example.com')
+                
+                # Create scan report data with null safety
+                report_data = ScanReportCreate(
+                    patient_email=patient_email,
+                    scan_type="ct_scan",
+                    scan_date=datetime.utcnow(),
+                    segmentation_data={
+                        "statistics": result.get("statistics", {}) or {}
+                    },
+                    insights=result.get("insights", []) or [],
+                    recommendations=result.get("recommendations", []) or [],
+                    segmentation_overlay=result.get("segmentation_mask", "") or ""
+                )
+                
+                # Save to database
+                report_result = ScanReportModel.create_scan_report(report_data)
+                if report_result.get("success"):
+                    result["report_id"] = report_result.get("report_id")
+                    result["saved_to_database"] = True
+                    logger.info(f"Kidney CT scan report saved with ID: {report_result.get('report_id')}")
+                else:
+                    logger.warning(f"Failed to save kidney CT scan report: {report_result.get('error')}")
+                    result["saved_to_database"] = False
+                    
+            except Exception as save_error:
+                logger.error(f"Error saving kidney CT scan report: {str(save_error)}")
+                result["saved_to_database"] = False
+                # Don't fail the main request if report saving fails
+        
+        logger.info("Kidney CT segmentation completed successfully")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in kidney segmentation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Kidney segmentation failed: {str(e)}"
+        )
+
+
+@router.post("/segment/pancreas", response_model=dict)
+async def segment_pancreas_ct(
+    request: SegmentRequest,
+    current_user=Depends(get_current_user)
+):
+    """Segment pancreas from CT scan using ResUNet model"""
+    try:
+        logger.info(f"Pancreas CT segmentation request received - User: {current_user.get('sub', 'unknown')}")
+        logger.info(f"Request data - Image length: {len(request.image_data)}")
+        
+        logger.info("Starting pancreas CT segmentation...")
+        result = await pancreas_segmentation_service.segment_image(request.image_data)
+        
+        # Auto-save scan report if segmentation was successful
+        if result.get("success", False):
+            try:
+                from datetime import datetime
+                from ..models.scan_report import ScanReportCreate
+                
+                # Extract patient email from current user
+                patient_email = current_user.get('sub', 'unknown@example.com')
+                
+                # Create scan report data with null safety
+                report_data = ScanReportCreate(
+                    patient_email=patient_email,
+                    scan_type="ct_scan",
+                    scan_date=datetime.utcnow(),
+                    segmentation_data={
+                        "statistics": result.get("statistics", {}) or {}
+                    },
+                    insights=result.get("insights", []) or [],
+                    recommendations=result.get("recommendations", []) or [],
+                    segmentation_overlay=result.get("segmentation_mask", "") or ""
+                )
+                
+                # Save to database
+                report_result = ScanReportModel.create_scan_report(report_data)
+                if report_result.get("success"):
+                    result["report_id"] = report_result.get("report_id")
+                    result["saved_to_database"] = True
+                    logger.info(f"Pancreas CT scan report saved with ID: {report_result.get('report_id')}")
+                else:
+                    logger.warning(f"Failed to save pancreas CT scan report: {report_result.get('error')}")
+                    result["saved_to_database"] = False
+                    
+            except Exception as save_error:
+                logger.error(f"Error saving pancreas CT scan report: {str(save_error)}")
+                result["saved_to_database"] = False
+                # Don't fail the main request if report saving fails
+        
+        logger.info("Pancreas CT segmentation completed successfully")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in pancreas segmentation: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Pancreas segmentation failed: {str(e)}"
         )

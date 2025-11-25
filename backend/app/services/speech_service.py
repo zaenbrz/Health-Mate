@@ -2,6 +2,11 @@ import whisper
 import os
 import logging
 from pathlib import Path
+import subprocess
+import json
+import tempfile
+import uuid
+from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,17 +27,24 @@ class SpeechService:
             self.model = whisper.load_model("small")
             logger.info("Whisper small model loaded successfully")
         
+        # Initialize TTS configuration
+        self.audio_output_dir = Path("media/audio")
+        self.audio_output_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Audio output directory: {self.audio_output_dir}")
+        
         # Language configurations
         self.supported_languages = {
             "en": {
                 "name": "English",
                 "whisper_code": "en",
-                "initial_prompt": "Medical symptoms, health questions, appointment scheduling: "
+                "initial_prompt": "Medical symptoms, health questions, appointment scheduling: ",
+                "piper_voice": "piper_models/en_US-lessac-medium.onnx"  # Local model path
             },
             "ur": {
                 "name": "Urdu",
                 "whisper_code": "ur",
-                "initial_prompt": "طبی علامات، صحت کے سوالات، ملاقات کا وقت: "
+                "initial_prompt": "طبی علامات، صحت کے سوالات، ملاقات کا وقت: ",
+                "piper_voice": None  # Urdu not available in Piper, will use fallback
             }
         }
         
@@ -245,6 +257,185 @@ class SpeechService:
             text = text[0].upper() + text[1:] if len(text) > 1 else text.upper()
         
         return text
+    
+    async def generate_speech(self, text: str, language: str = "en") -> dict:
+        """
+        Generate speech audio using Piper TTS
+        Returns: dict with audio_url, filename, duration
+        """
+        try:
+            lang_config = self.supported_languages.get(language, self.supported_languages["en"])
+            logger.info(f"Generating speech in {lang_config['name']} for text: {text[:50]}...")
+            
+            # Check if Piper voice is available for this language
+            if not lang_config.get("piper_voice"):
+                raise Exception(f"Piper TTS not available for {lang_config['name']}")
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"speech_{timestamp}_{uuid.uuid4().hex[:8]}.wav"
+            output_path = self.audio_output_dir / filename
+            
+            # Use Piper Python API with local model
+            from piper import PiperVoice
+            import wave
+            
+            model_path = lang_config["piper_voice"]
+            logger.info(f"Loading Piper model from: {model_path}")
+            
+            # Load voice from local model file
+            voice = PiperVoice.load(model_path)
+            
+            # Synthesize speech - returns a generator of AudioChunk objects
+            logger.info(f"Synthesizing speech...")
+            audio_chunks = []
+            for audio_chunk in voice.synthesize(text):
+                # AudioChunk has an 'audio_int16_bytes' property containing PCM audio bytes
+                audio_chunks.append(audio_chunk.audio_int16_bytes)
+            
+            # Combine all chunks into bytes
+            audio_bytes = b''.join(audio_chunks)
+            logger.info(f"Generated {len(audio_bytes)} bytes of audio")
+            
+            # Write to WAV file
+            with wave.open(str(output_path), 'wb') as wav_file:
+                wav_file.setnchannels(1)  # Mono
+                wav_file.setsampwidth(2)  # 16-bit
+                wav_file.setframerate(voice.config.sample_rate)
+                wav_file.writeframes(audio_bytes)
+            
+            logger.info(f"Speech generated successfully: {output_path}")
+            
+            # Calculate duration
+            duration = len(audio_bytes) / (voice.config.sample_rate * 2)  # 2 bytes per sample
+            
+            return {
+                "audio_url": f"/media/audio/{filename}",
+                "filename": filename,
+                "duration": duration
+            }
+            
+        except Exception as e:
+            logger.error(f"Speech generation failed: {e}")
+            raise
+    
+    async def generate_speech_with_lipsync(self, text: str, language: str = "en") -> dict:
+        """
+        Generate speech audio + lip-sync viseme data using Piper TTS + Rhubarb
+        Returns: dict with audio_url, visemes, duration
+        """
+        try:
+            # Step 1: Generate audio with Piper
+            audio_result = await self.generate_speech(text, language)
+            audio_path = self.audio_output_dir / audio_result["filename"]
+            
+            # Step 2: Generate lip-sync with Rhubarb
+            logger.info(f"Generating lip-sync data for: {audio_path}")
+            visemes = await self._run_rhubarb(audio_path)
+            
+            return {
+                "audio_url": audio_result["audio_url"],
+                "filename": audio_result["filename"],
+                "duration": audio_result["duration"],
+                "visemes": visemes
+            }
+            
+        except Exception as e:
+            logger.error(f"Speech + lip-sync generation failed: {e}")
+            raise
+    
+    async def _run_rhubarb(self, audio_path: Path) -> list:
+        """
+        Run Rhubarb Lip Sync to extract viseme timing from audio
+        Returns: list of viseme events [{time, type}]
+        """
+        try:
+            # Create temporary file for Rhubarb output
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
+                temp_output = temp_file.name
+            
+            # Run Rhubarb command
+            cmd = [
+                "rhubarb",
+                "-f", "json",
+                "-o", temp_output,
+                str(audio_path)
+            ]
+            
+            logger.info(f"Running Rhubarb: {' '.join(cmd)}")
+            
+            process = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if process.returncode != 0:
+                logger.error(f"Rhubarb failed: {process.stderr}")
+                raise Exception(f"Rhubarb lip-sync failed: {process.stderr}")
+            
+            # Read Rhubarb output
+            with open(temp_output, 'r') as f:
+                rhubarb_data = json.load(f)
+            
+            # Log the raw Rhubarb output for debugging
+            logger.info(f"Raw Rhubarb output: {json.dumps(rhubarb_data, indent=2)}")
+            
+            # Clean up temp file
+            os.unlink(temp_output)
+            
+            # Extract viseme cues (mouthCues)
+            visemes = rhubarb_data.get("mouthCues", [])
+            logger.info(f"Extracted {len(visemes)} viseme cues from Rhubarb")
+            logger.info(f"First 5 cues: {visemes[:5] if len(visemes) > 0 else 'NONE'}")
+            
+            # Convert Rhubarb phonemes to Ready Player Me viseme names
+            visemes_mapped = self._map_rhubarb_to_rpm_visemes(visemes)
+            logger.info(f"Mapped visemes count: {len(visemes_mapped)}")
+            logger.info(f"First 5 mapped: {visemes_mapped[:5] if len(visemes_mapped) > 0 else 'NONE'}")
+            
+            return visemes_mapped
+            
+        except subprocess.TimeoutExpired:
+            logger.error("Rhubarb timed out")
+            raise Exception("Lip-sync generation timed out")
+        except Exception as e:
+            logger.error(f"Rhubarb execution failed: {e}")
+            raise
+    
+    def _map_rhubarb_to_rpm_visemes(self, rhubarb_cues: list) -> list:
+        """
+        Map Rhubarb phoneme codes to Ready Player Me viseme names
+        Rhubarb uses: A, B, C, D, E, F, G, H, X
+        RPM uses: viseme_sil, viseme_PP, viseme_FF, viseme_TH, etc.
+        """
+        # Mapping from Rhubarb to RPM visemes
+        phoneme_map = {
+            "X": "viseme_sil",      # Silence
+            "A": "viseme_aa",       # Open vowel (father)
+            "B": "viseme_PP",       # Lips together (p, b, m)
+            "C": "viseme_E",        # Slightly open (bed)
+            "D": "viseme_aa",       # Open (cat, but)
+            "E": "viseme_O",        # Rounded (bird)
+            "F": "viseme_FF",       # Lips against teeth (f, v)
+            "G": "viseme_kk",       # Back of tongue (k, g)
+            "H": "viseme_CH",       # Affricates (ch, j)
+        }
+        
+        mapped_cues = []
+        for cue in rhubarb_cues:
+            phoneme = cue.get("value", "X")
+            time = cue.get("start", 0)
+            
+            viseme_name = phoneme_map.get(phoneme, "viseme_sil")
+            mapped_cues.append({
+                "time": time,
+                "type": viseme_name
+            })
+        
+        return mapped_cues
+
     
 
     

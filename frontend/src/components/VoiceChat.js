@@ -4,7 +4,7 @@ import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
 
-export default function VoiceChat({ selectedLanguage, onResponse, onProcessingChange }) {
+export default function VoiceChat({ selectedLanguage, onResponse, onProcessingChange, avatarViewerRef }) {
   const [recording, setRecording] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -45,6 +45,13 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       });
 
       console.log('Starting recording...');
+      
+      // Play yes-nod animation while recording (index 1, already preloaded)
+      if (avatarViewerRef?.current) {
+        console.log('🎬 Playing yes-nod animation (loop)');
+        avatarViewerRef.current.playAnimation(1, true, 0.3);
+      }
+      
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
@@ -118,6 +125,13 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
 
       // Step 2: Get AI response
       console.log('🤖 Getting AI response...');
+      
+      // Play thinking animation while AI generates response (index 2, already preloaded)
+      if (avatarViewerRef?.current) {
+        console.log('🤔 Playing thinking animation (loop)');
+        avatarViewerRef.current.playAnimation(2, true, 0.3);
+      }
+      
       const chatResponse = await fetch(`${CONFIG.API_URL}/chat`, {
         method: 'POST',
         headers: {
@@ -135,9 +149,57 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       const aiMessage = chatData.response;
       console.log('✅ AI Response:', aiMessage);
 
-      // Send response to parent component
+      // Send response to parent component (display on screen)
       if (onResponse) {
         onResponse(aiMessage);
+      }
+
+      // Step 3: Generate speech with lip-sync (don't fail if this errors)
+      try {
+        console.log('🎤 Generating speech with lip-sync...');
+        const lipsyncResponse = await fetch(`${CONFIG.API_URL}/speech/lipsync`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            text: aiMessage,
+            language: selectedLanguage 
+          }),
+        });
+
+        if (!lipsyncResponse.ok) {
+          console.error('⚠️ Lip-sync generation failed, but AI response is already shown');
+          return; // Don't throw error, AI response is already displayed
+        }
+
+        const lipsyncData = await lipsyncResponse.json();
+        console.log('✅ Lip-sync data received:', lipsyncData);
+        console.log('📊 Visemes array:', lipsyncData.visemes);
+        console.log('📊 Visemes length:', lipsyncData.visemes ? lipsyncData.visemes.length : 0);
+        console.log('📊 First 5 visemes:', lipsyncData.visemes ? lipsyncData.visemes.slice(0, 5) : 'none');
+
+        // Step 4: Play audio and animate avatar
+        if (avatarViewerRef?.current) {
+          const audioUrl = `${CONFIG.API_URL}${lipsyncData.audio_url}`;
+          console.log('🔊 Playing audio with lip-sync:', audioUrl);
+          console.log('🔊 Passing visemes to avatar:', lipsyncData.visemes);
+          
+          // Play thoughtful animation during lip-sync (index 3, already preloaded)
+          console.log('💭 Playing thoughtful animation');
+          avatarViewerRef.current.playAnimation(3, true, 0.3);
+          
+          // Start lip-sync audio immediately
+          setTimeout(() => {
+            avatarViewerRef.current.playAudioWithLipsync(audioUrl, lipsyncData.visemes);
+          }, 200);
+        } else {
+          console.warn('⚠️ Avatar viewer ref not available');
+        }
+      } catch (lipsyncError) {
+        console.error('⚠️ Lip-sync failed, but AI response is already shown:', lipsyncError);
+        // Don't overwrite the AI response - it's already displayed
       }
 
     } catch (error) {
@@ -228,4 +290,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
 

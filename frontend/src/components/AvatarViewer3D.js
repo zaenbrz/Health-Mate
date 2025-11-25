@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
 import CONFIG from '../config';
 
-const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, style }, ref) => {
+const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, style, onAvatarLoaded, onAudioEnded }, ref) => {
   const webViewRef = useRef(null);
   const [viewerReady, setViewerReady] = useState(false);
   const [htmlUri, setHtmlUri] = useState(null);
@@ -75,6 +75,9 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
           break;
         case 'loaded':
           console.log('Avatar loaded successfully');
+          if (onAvatarLoaded) {
+            onAvatarLoaded();
+          }
           break;
         case 'morphsFound':
           console.log('Available morphs:', data.morphs);
@@ -93,6 +96,9 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
           break;
         case 'audioEnded':
           console.log('Audio playback ended');
+          if (onAudioEnded) {
+            onAudioEnded();
+          }
           break;
       }
     } catch (error) {
@@ -104,6 +110,7 @@ const AvatarViewer3D = forwardRef(({ avatarUrl, audioUrl, autoPlay = false, styl
   useImperativeHandle(ref, () => ({
     playAudio: (url) => sendMessage({ type: 'playAudio', url }),
     stopAudio: () => sendMessage({ type: 'stopAudio' }),
+    playAudioWithLipsync: (audioUrl, visemes) => sendMessage({ type: 'playAudioWithLipsync', audioUrl, visemes }),
     testMorph: (strength = 1, duration = 800) => sendMessage({ type: 'testMorph', strength, duration }),
     loadAvatar: (url) => sendMessage({ type: 'loadAvatar', url }),
     loadAnimation: (url) => sendMessage({ type: 'loadAnimation', url }),

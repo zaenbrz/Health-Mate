@@ -23,6 +23,7 @@ export default function SideDrawer({
   onLanguageChange,
   onManageAvatar,
   onEditProfile,
+  onScanAnalysis,
   onLogout 
 }) {
   const [slideAnim] = React.useState(new Animated.Value(-DRAWER_WIDTH));
@@ -131,6 +132,14 @@ export default function SideDrawer({
               >
                 <Text style={styles.menuIcon}>✏️</Text>
                 <Text style={styles.menuText}>Complete Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={onScanAnalysis}
+              >
+                <Text style={styles.menuIcon}>🔬</Text>
+                <Text style={styles.menuText}>Scan Analysis</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.menuItem}>

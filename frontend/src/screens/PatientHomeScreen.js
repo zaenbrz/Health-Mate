@@ -16,12 +16,43 @@ export default function PatientHomeScreen({ navigation }) {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [aiResponse, setAiResponse] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
   const avatarViewerRef = useRef(null);
 
   useEffect(() => {
     fetchPatientProfile();
     loadLanguagePreference();
   }, []);
+
+  useEffect(() => {
+    // Preload all animations when avatar is loaded
+    if (avatarLoaded && avatarViewerRef.current) {
+      console.log('📦 Preloading all animations...');
+      const animations = [
+        'loop.fbx',
+        'yes-nod.fbx',
+        'Thinking.fbx',
+        'thoughtful.fbx'
+      ];
+
+      // Load all animations sequentially
+      let loadIndex = 0;
+      const loadNext = () => {
+        if (loadIndex < animations.length) {
+          const animUrl = `${CONFIG.API_URL}/animations/${animations[loadIndex]}`;
+          console.log(`📦 Loading animation ${loadIndex + 1}/${animations.length}: ${animations[loadIndex]}`);
+          avatarViewerRef.current.loadAnimation(animUrl);
+          loadIndex++;
+          setTimeout(loadNext, 500); // Small delay between loads
+        } else {
+          console.log('✅ All animations preloaded, starting first animation (loop)');
+          // Play first animation (index 0 = loop) after all are loaded
+          avatarViewerRef.current.playAnimation(0, true, 0.5);
+        }
+      };
+      loadNext();
+    }
+  }, [avatarLoaded]);
 
   async function loadLanguagePreference() {
     try {
@@ -100,25 +131,6 @@ export default function PatientHomeScreen({ navigation }) {
     }
   }
 
-  async function testAnimation() {
-    if (!avatarViewerRef.current) {
-      console.log('Avatar viewer not ready');
-      return;
-    }
-
-    const animationUrl = `${CONFIG.API_URL}/animations/thoughtful.fbx`;
-    console.log('🎬 Loading animation:', animationUrl);
-
-    // Load the animation
-    avatarViewerRef.current.loadAnimation(animationUrl);
-
-    // Play it after a short delay
-    setTimeout(() => {
-      console.log('▶️ Playing animation');
-      avatarViewerRef.current.playAnimation(null, false, 0.3);
-    }, 1000);
-  }
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -146,6 +158,10 @@ export default function PatientHomeScreen({ navigation }) {
         onEditProfile={() => {
           setDrawerVisible(false);
           navigation.navigate('CompleteProfile');
+        }}
+        onScanAnalysis={() => {
+          setDrawerVisible(false);
+          navigation.navigate('ScanAnalysis');
         }}
         onLogout={handleLogout}
       />
@@ -177,15 +193,17 @@ export default function PatientHomeScreen({ navigation }) {
               ref={avatarViewerRef}
               avatarUrl={avatarUrl}
               style={styles.avatarViewer}
+              onAvatarLoaded={() => {
+                console.log('✅ Avatar fully loaded, ready for animation');
+                setAvatarLoaded(true);
+              }}
+              onAudioEnded={() => {
+                console.log('🔄 Audio ended, returning to loop animation');
+                if (avatarViewerRef.current) {
+                  avatarViewerRef.current.playAnimation(0, true, 0.5); // Index 0 = loop
+                }
+              }}
             />
-            
-            {/* Test Animation Button */}
-            <TouchableOpacity 
-              style={styles.testAnimButton}
-              onPress={testAnimation}
-            >
-              <Text style={styles.testAnimText}>Test</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.avatarContainer}>
@@ -205,13 +223,10 @@ export default function PatientHomeScreen({ navigation }) {
       <View style={styles.bottomSection}>
         <VoiceChat 
           selectedLanguage={selectedLanguage}
+          avatarViewerRef={avatarViewerRef}
           onResponse={(response) => {
             console.log('AI Response received:', response);
             setAiResponse(response);
-            // Optional: trigger avatar lip-sync
-            if (avatarViewerRef.current) {
-              avatarViewerRef.current.testMorph(0.8, 2000);
-            }
           }}
         />
       </View>
@@ -282,25 +297,6 @@ const styles = StyleSheet.create({
   avatarViewer: {
     width: '100%',
     height: '100%',
-  },
-  testAnimButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  testAnimText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
   },
   bottomSection: {
     position: 'absolute',

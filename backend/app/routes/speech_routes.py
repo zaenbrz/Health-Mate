@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
 from ..services.speech_service import SpeechService
 from ..utils.jwt import get_current_user
 import logging
@@ -11,6 +12,15 @@ router = APIRouter(tags=["Speech"])
 
 # Initialize service
 speech_service = SpeechService()
+
+# Request models
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "en"
+
+class LipsyncRequest(BaseModel):
+    text: str
+    language: str = "en"
 
 @router.post("/transcribe")
 async def transcribe_audio(
@@ -64,4 +74,72 @@ async def test_speech_auth(current_user=Depends(get_current_user)):
         "user": current_user.get("email", "unknown"),
         "role": current_user.get("role", "unknown")
     }
+
+@router.post("/generate")
+async def generate_speech(
+    request: TTSRequest,
+    current_user=Depends(get_current_user)
+):
+    """
+    Generate speech audio from text using Piper TTS
+    Returns audio URL and metadata
+    """
+    try:
+        logger.info(f"TTS request from user: {current_user.get('email', 'unknown')}")
+        logger.info(f"Text: {request.text[:100]}, Language: {request.language}")
+        
+        # Validate language
+        if request.language not in ["en", "ur"]:
+            logger.warning(f"Invalid language '{request.language}', defaulting to English")
+            request.language = "en"
+        
+        # Generate speech
+        result = await speech_service.generate_speech(request.text, request.language)
+        
+        return {
+            "success": True,
+            "audio_url": result["audio_url"],
+            "filename": result["filename"],
+            "duration": result["duration"],
+            "language": request.language
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating speech: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/lipsync")
+async def generate_speech_with_lipsync(
+    request: LipsyncRequest,
+    current_user=Depends(get_current_user)
+):
+    """
+    Generate speech audio + lip-sync viseme data using Piper TTS + Rhubarb
+    Returns audio URL, viseme timeline, and metadata
+    """
+    try:
+        logger.info(f"TTS+Lipsync request from user: {current_user.get('email', 'unknown')}")
+        logger.info(f"Text: {request.text[:100]}, Language: {request.language}")
+        
+        # Validate language
+        if request.language not in ["en", "ur"]:
+            logger.warning(f"Invalid language '{request.language}', defaulting to English")
+            request.language = "en"
+        
+        # Generate speech with lip-sync
+        result = await speech_service.generate_speech_with_lipsync(request.text, request.language)
+        
+        return {
+            "success": True,
+            "audio_url": result["audio_url"],
+            "filename": result["filename"],
+            "duration": result["duration"],
+            "visemes": result["visemes"],
+            "language": request.language
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating speech with lipsync: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 

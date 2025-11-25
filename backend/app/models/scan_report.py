@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 class ScanType(str, Enum):
     BRAIN_MRI = "brain_mri"
     BREAST_ULTRASOUND = "breast_ultrasound"
+    CT_SCAN = "ct_scan"
 
 class ScanReportBase(BaseModel):
     patient_email: EmailStr
