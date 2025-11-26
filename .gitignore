@@ -44,6 +44,12 @@ migrate_working_dir/
 *.weights
 *.bin
 *.safetensors
+*.onnx
+*.pth
+
+# Specific model directories
+backend/piper_models/
+backend/app/models/weights/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
