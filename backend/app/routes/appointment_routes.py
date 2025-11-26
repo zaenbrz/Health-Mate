@@ -5,7 +5,9 @@ from ..models.appointment import (
     AppointmentCreate, AppointmentUpdate, AppointmentResponse
 )
 from ..services.appointment_service import AppointmentService
+from ..services.notification_service import NotificationService
 from ..utils.jwt import get_current_user
+from ..database import get_database
 import logging
 import json
 
@@ -15,7 +17,8 @@ router = APIRouter(tags=["Appointments"])
 @router.post("/create", response_model=AppointmentResponse)
 async def create_appointment(
     request: Request,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db = Depends(get_database)
 ):
     """Create a new appointment"""
     try:
@@ -59,7 +62,22 @@ async def create_appointment(
             raise HTTPException(status_code=403, detail="Patients can only create appointments for themselves")
 
         appointment_service = AppointmentService()
-        return await appointment_service.create_appointment(appointment_data)
+        appointment = await appointment_service.create_appointment(appointment_data)
+        
+        # Send notifications
+        notification_service = NotificationService(db)
+        
+        # Get patient name
+        patient = db.users.find_one({"email": appointment.patient_email})
+        patient_name = patient.get("name", "Patient") if patient else "Patient"
+        
+        # Notify patient about booking success
+        notification_service.notify_appointment_booked(appointment, patient_name)
+        
+        # Notify doctor about new appointment
+        notification_service.notify_new_appointment_to_doctor(appointment, patient_name)
+        
+        return appointment
 
     except HTTPException:
         raise
@@ -111,12 +129,31 @@ async def get_doctor_appointments(
 async def update_appointment(
     appointment_id: str,
     update_data: AppointmentUpdate,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db = Depends(get_database)
 ):
     """Update an appointment"""
     try:
         appointment_service = AppointmentService()
-        return await appointment_service.update_appointment(appointment_id, update_data)
+        
+        # Get current appointment before update
+        current_appointment = await appointment_service.get_appointment_by_id(appointment_id)
+        
+        # Update appointment
+        updated_appointment = await appointment_service.update_appointment(appointment_id, update_data)
+        
+        # If status changed to CANCELLED and cancelled by doctor, notify patient
+        if (update_data.status == "CANCELLED" and 
+            current_user['role'] == 'doctor' and 
+            current_appointment and current_appointment.status != "CANCELLED"):
+            
+            notification_service = NotificationService(db)
+            notification_service.notify_appointment_cancelled(
+                updated_appointment,
+                cancelled_by="doctor"
+            )
+        
+        return updated_appointment
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

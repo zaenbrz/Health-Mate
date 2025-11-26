@@ -6,6 +6,8 @@ import CONFIG from '../config';
 import AvatarViewer3D from '../components/AvatarViewer3D';
 import VoiceChat from '../components/VoiceChat';
 import SideDrawer from '../components/SideDrawer';
+import NotificationBell from '../components/NotificationBell';
+import NotificationToast from '../components/NotificationToast';
 
 export default function PatientHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -141,12 +143,16 @@ export default function PatientHomeScreen({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      {/* Toast notifications at the top level */}
+      <NotificationToast />
+      
       <SideDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         patientName={patientName}
         patientEmail={patientEmail}
         selectedLanguage={selectedLanguage}
+        navigation={navigation}
         onLanguageChange={(lang) => {
           handleLanguageChange(lang);
           setTimeout(() => setDrawerVisible(false), 300);
@@ -175,16 +181,20 @@ export default function PatientHomeScreen({ navigation }) {
             <Text style={styles.hamburgerIcon}>☰</Text>
           </TouchableOpacity>
           
-          <Text style={styles.greeting}>Hi {patientName},</Text>
-          <ScrollView 
-            style={styles.subtitleContainer}
-            contentContainerStyle={styles.subtitleContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.subtitle}>
-              {aiResponse || "How can I help you?"}
-            </Text>
-          </ScrollView>
+          <View style={styles.headerCenter}>
+            <Text style={styles.greeting}>Hi {patientName},</Text>
+            <ScrollView 
+              style={styles.subtitleContainer}
+              contentContainerStyle={styles.subtitleContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.subtitle}>
+                {aiResponse || "How can I help you?"}
+              </Text>
+            </ScrollView>
+          </View>
+          
+          <NotificationBell />
         </View>
         
         {avatarUrl ? (
@@ -251,20 +261,24 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     width: '100%',
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     marginBottom: 15,
+    paddingHorizontal: 10,
   },
   hamburgerButton: {
-    position: 'absolute',
-    top: 0,
-    left: 10,
     padding: 10,
-    zIndex: 10,
   },
   hamburgerIcon: {
     fontSize: 28,
     color: '#1e3a8a',
     fontWeight: '600',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 10,
   },
   greeting: {
     fontSize: 24,

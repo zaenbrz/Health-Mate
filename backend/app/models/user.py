@@ -72,11 +72,24 @@ class UserModel:
     def update_user(email: str, update_data: Dict) -> bool:
         """Update user information"""
         try:
+            # First check if user exists
+            user = db.users.find_one({"email": email})
+            if not user:
+                logger.warning(f"User not found: {email}")
+                return False
+            
+            logger.info(f"Updating user {email} with data: {update_data}")
+            
+            # Update the user
             result = db.users.update_one(
                 {"email": email}, 
                 {"$set": update_data}
             )
-            return result.modified_count > 0
+            
+            logger.info(f"Update result - matched: {result.matched_count}, modified: {result.modified_count}")
+            
+            # Return True if user exists, regardless of whether data changed
+            return True
         except Exception as e:
             logger.error(f"Error updating user: {str(e)}")
             return False

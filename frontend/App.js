@@ -11,6 +11,12 @@ import AvatarCustomizationScreen from './src/screens/AvatarCustomizationScreen';
 import PatientHomeScreen from './src/screens/PatientHomeScreen';
 import ScanAnalysisScreen from './src/screens/ScanAnalysisScreen';
 import ScanReportScreen from './src/screens/ScanReportScreen';
+import DoctorHomeScreen from './src/screens/DoctorHomeScreen';
+import DoctorAppointmentsScreen from './src/screens/DoctorAppointmentsScreen';
+import DoctorAvailabilityScreen from './src/screens/DoctorAvailabilityScreen';
+import PatientAppointmentsScreen from './src/screens/PatientAppointmentsScreen';
+import BookAppointmentScreen from './src/screens/BookAppointmentScreen';
+import MedicalReportsScreen from './src/screens/MedicalReportsScreen';
 
 const Stack = createStackNavigator();
 
@@ -26,6 +32,12 @@ export default function App() {
         <Stack.Screen name="PatientHome" component={PatientHomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ScanAnalysis" component={ScanAnalysisScreen} options={{ title: 'Scan Analysis', headerShown: false }} />
         <Stack.Screen name="ScanReport" component={ScanReportScreen} options={{ title: 'Scan Report', headerShown: false }} />
+        <Stack.Screen name="DoctorHome" component={DoctorHomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DoctorAppointments" component={DoctorAppointmentsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="DoctorAvailability" component={DoctorAvailabilityScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PatientAppointments" component={PatientAppointmentsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="BookAppointment" component={BookAppointmentScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="MedicalReports" component={MedicalReportsScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -8,6 +8,8 @@ import os
 from dotenv import load_dotenv
 import asyncio
 from ..models.appointment import AppointmentReminder, AppointmentResponse, AppointmentStatus
+from ..models.notification import Notification, NotificationType, NotificationPriority, NotificationResponse
+from bson import ObjectId
 
 # Load environment variables
 load_dotenv()
@@ -17,13 +19,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class NotificationService:
-    def __init__(self):
+    def __init__(self, db=None):
         self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
         self.smtp_username = os.getenv("SMTP_USERNAME")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.from_email = os.getenv("FROM_EMAIL", "noreply@healthmate.com")
         self.app_name = "HealthMate"
+        self.db = db
         
         # In-memory storage for sent reminders (replace with database in production)
         self.sent_reminders: Dict[str, AppointmentReminder] = {}
@@ -385,5 +388,176 @@ class NotificationService:
         except Exception as e:
             logger.error(f"Error sending bulk reminders: {str(e)}")
             return 0
+
+    # New notification methods for in-app notifications
+    
+    def create_notification(self, notification: Notification) -> Optional[NotificationResponse]:
+        """Create a new in-app notification"""
+        try:
+            if self.db is None:
+                logger.warning("Database not configured for notifications")
+                return None
+                
+            notification_dict = notification.dict()
+            notification_dict["created_at"] = datetime.utcnow()
+            notification_dict["read"] = False
+            
+            result = self.db.notifications.insert_one(notification_dict)
+            notification_dict["_id"] = result.inserted_id
+            
+            logger.info(f"Notification created for {notification.user_email}: {notification.title}")
+            return NotificationResponse.from_dict(notification_dict)
+            
+        except Exception as e:
+            logger.error(f"Error creating notification: {str(e)}")
+            return None
+    
+    def notify_appointment_booked(self, appointment: AppointmentResponse, patient_name: str) -> bool:
+        """Notify patient that appointment was booked successfully"""
+        try:
+            notification = Notification(
+                user_email=appointment.patient_email,
+                type=NotificationType.APPOINTMENT_BOOKED,
+                title="Appointment Booked Successfully",
+                message=f"Your {appointment.appointment_type} appointment has been scheduled for {appointment.appointment_date} at {appointment.appointment_time}.",
+                priority=NotificationPriority.HIGH,
+                data={
+                    "appointment_id": appointment.id,
+                    "appointment_date": str(appointment.appointment_date),
+                    "appointment_time": str(appointment.appointment_time),
+                    "appointment_type": appointment.appointment_type
+                }
+            )
+            
+            result = self.create_notification(notification)
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Error sending appointment booked notification: {str(e)}")
+            return False
+    
+    def notify_new_appointment_to_doctor(self, appointment: AppointmentResponse, patient_name: str) -> bool:
+        """Notify doctor of new appointment"""
+        try:
+            notification = Notification(
+                user_email=appointment.doctor_email,
+                type=NotificationType.NEW_APPOINTMENT_FOR_DOCTOR,
+                title="New Appointment Scheduled",
+                message=f"New {appointment.appointment_type} appointment with {patient_name} on {appointment.appointment_date} at {appointment.appointment_time}.",
+                priority=NotificationPriority.MEDIUM,
+                data={
+                    "appointment_id": appointment.id,
+                    "patient_email": appointment.patient_email,
+                    "patient_name": patient_name,
+                    "appointment_date": str(appointment.appointment_date),
+                    "appointment_time": str(appointment.appointment_time),
+                    "appointment_type": appointment.appointment_type
+                }
+            )
+            
+            result = self.create_notification(notification)
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Error sending new appointment notification to doctor: {str(e)}")
+            return False
+    
+    def notify_appointment_cancelled(self, appointment: AppointmentResponse, cancelled_by: str) -> bool:
+        """Notify patient that appointment was cancelled by doctor"""
+        try:
+            notification = Notification(
+                user_email=appointment.patient_email,
+                type=NotificationType.APPOINTMENT_CANCELLED,
+                title="Appointment Cancelled",
+                message=f"Your {appointment.appointment_type} appointment scheduled for {appointment.appointment_date} at {appointment.appointment_time} has been cancelled by the doctor.",
+                priority=NotificationPriority.URGENT,
+                data={
+                    "appointment_id": appointment.id,
+                    "appointment_date": str(appointment.appointment_date),
+                    "appointment_time": str(appointment.appointment_time),
+                    "cancelled_by": cancelled_by
+                }
+            )
+            
+            result = self.create_notification(notification)
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Error sending appointment cancelled notification: {str(e)}")
+            return False
+    
+    def create_health_reminder_from_report(self, user_email: str, report_data: dict) -> bool:
+        """Create health reminders based on AI recommendations from medical report"""
+        try:
+            if self.db is None or not report_data:
+                return False
+            
+            recommendations = []
+            
+            # Extract recommendations from AI diagnosis
+            if "ai_triage_diagnosis" in report_data:
+                ai_diagnosis = report_data["ai_triage_diagnosis"]
+                if "recommendations" in ai_diagnosis and ai_diagnosis["recommendations"]:
+                    recommendations.extend(ai_diagnosis["recommendations"])
+            
+            # Extract from summary
+            if "summary" in report_data and "key_recommendations" in report_data["summary"]:
+                recommendations.extend(report_data["summary"]["key_recommendations"])
+            
+            # Create notifications for each recommendation
+            for idx, recommendation in enumerate(recommendations[:3]):  # Limit to top 3
+                notification = Notification(
+                    user_email=user_email,
+                    type=NotificationType.HEALTH_REMINDER,
+                    title="Health Reminder",
+                    message=f"💊 {recommendation}",
+                    priority=NotificationPriority.MEDIUM,
+                    data={
+                        "source": "AI Medical Report",
+                        "recommendation_index": idx
+                    }
+                )
+                self.create_notification(notification)
+            
+            logger.info(f"Created {len(recommendations[:3])} health reminders for {user_email}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating health reminders: {str(e)}")
+            return False
+    
+    def get_user_notifications(self, user_email: str, unread_only: bool = False) -> List[NotificationResponse]:
+        """Get all notifications for a user"""
+        try:
+            if self.db is None:
+                return []
+            
+            query = {"user_email": user_email}
+            if unread_only:
+                query["read"] = False
+            
+            notifications = list(self.db.notifications.find(query).sort("created_at", -1).limit(100))
+            return [NotificationResponse.from_dict(n) for n in notifications]
+            
+        except Exception as e:
+            logger.error(f"Error getting user notifications: {str(e)}")
+            return []
+    
+    def mark_notification_read(self, notification_id: str) -> bool:
+        """Mark a notification as read"""
+        try:
+            if self.db is None:
+                return False
+            
+            result = self.db.notifications.update_one(
+                {"_id": ObjectId(notification_id)},
+                {"$set": {"read": True}}
+            )
+            
+            return result.modified_count > 0
+            
+        except Exception as e:
+            logger.error(f"Error marking notification as read: {str(e)}")
+            return False
 
 

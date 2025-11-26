@@ -1,4 +1,5 @@
 import whisper
+import base64
 import os
 import logging
 from pathlib import Path
@@ -321,14 +322,15 @@ class SpeechService:
     
     async def generate_speech_with_lipsync(self, text: str, language: str = "en") -> dict:
         """
-        Generate speech audio + lip-sync viseme data using Piper TTS + Rhubarb
-        Returns: dict with audio_url, visemes, duration
+        Generate speech audio + lip-sync viseme data using Piper TTS + Rhubarb (English) or Eleven Labs (Urdu)
+        Returns: dict with audio_url, filename, duration, visemes
         """
         try:
+            if language == "ur":
+                return await self.generate_urdu_speech_with_lipsync(text)
             # Step 1: Generate audio with Piper
             audio_result = await self.generate_speech(text, language)
             audio_path = self.audio_output_dir / audio_result["filename"]
-            
             # Step 2: Generate lip-sync with Rhubarb
             logger.info(f"Generating lip-sync data for: {audio_path}")
             visemes = await self._run_rhubarb(audio_path)
@@ -339,9 +341,75 @@ class SpeechService:
                 "duration": audio_result["duration"],
                 "visemes": visemes
             }
-            
         except Exception as e:
             logger.error(f"Speech + lip-sync generation failed: {e}")
+            raise
+
+    async def generate_urdu_speech_with_lipsync(self, text: str) -> dict:
+        """
+        Generate Urdu speech audio using Eleven Labs and lipsync with Rhubarb
+        Returns: dict with audio_url, filename, duration, visemes
+        """
+        try:
+            from elevenlabs import VoiceSettings
+            from elevenlabs.client import ElevenLabs
+            from pydub import AudioSegment
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            mp3_filename = f"speech_urdu_{timestamp}_{uuid.uuid4().hex[:8]}.mp3"
+            wav_filename = f"speech_urdu_{timestamp}_{uuid.uuid4().hex[:8]}.wav"
+            mp3_path = self.audio_output_dir / mp3_filename
+            wav_path = self.audio_output_dir / wav_filename
+            
+            logger.info(f"Generating Urdu speech with Eleven Labs for text: {text[:50]}...")
+            
+            elevenlabs = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
+            audio_response = elevenlabs.text_to_speech.convert(
+                text=text,
+                voice_id="9cI5mhBtM4WtQ9Fo6jWQ",  # Urdu voice ID
+                model_id="eleven_turbo_v2_5",
+                output_format="mp3_22050_32",
+                voice_settings=VoiceSettings(
+                    stability=0.5,
+                    similarity_boost=0.75,
+                    use_speaker_boost=True,
+                    speed=1.0,
+                ),
+            )
+            
+            # Save audio to MP3 file first
+            with open(mp3_path, 'wb') as f:
+                for chunk in audio_response:
+                    if chunk:
+                        f.write(chunk)
+            
+            logger.info(f"Urdu speech MP3 saved to: {mp3_path}")
+            
+            # Convert MP3 to WAV for Rhubarb
+            logger.info(f"Converting MP3 to WAV for Rhubarb...")
+            audio = AudioSegment.from_mp3(str(mp3_path))
+            audio.export(str(wav_path), format="wav")
+            logger.info(f"WAV file created: {wav_path}")
+            
+            # Generate lip-sync with Rhubarb using WAV file
+            visemes = await self._run_rhubarb(wav_path)
+            
+            # Calculate duration from WAV
+            duration = len(audio) / 1000.0  # pydub returns milliseconds
+            
+            # Delete WAV file (we only need MP3 for frontend)
+            if wav_path.exists():
+                wav_path.unlink()
+            
+            return {
+                'audio_url': f"/media/audio/{mp3_filename}",
+                'filename': mp3_filename,
+                'duration': duration,
+                'visemes': visemes
+            }
+        except Exception as e:
+            logger.error(f"Urdu speech + lipsync generation failed: {e}")
             raise
     
     async def _run_rhubarb(self, audio_path: Path) -> list:

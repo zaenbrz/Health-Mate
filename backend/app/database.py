@@ -46,3 +46,8 @@ try:
 except Exception as e:
     logger.error(f"Failed to connect to MongoDB: {str(e)}")
     raise e
+
+# Dependency function for FastAPI
+def get_database():
+    """FastAPI dependency to get database instance"""
+    return db

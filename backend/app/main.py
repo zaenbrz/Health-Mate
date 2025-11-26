@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.routes import auth_routes, chat_routes, profile_routes, appointment_routes, scan_routes, speech_routes, doctor_availability_routes, avatar_proxy_routes, animation_routes
+from app.routes import auth_routes, chat_routes, profile_routes, appointment_routes, scan_routes, speech_routes, doctor_availability_routes, avatar_proxy_routes, animation_routes, report_routes, notification_routes
 import logging
 import time
 from pathlib import Path
@@ -55,6 +55,8 @@ app.include_router(doctor_availability_routes.router, prefix="/doctor-availabili
 app.include_router(speech_routes.router, prefix="/speech", tags=["Speech"])
 app.include_router(avatar_proxy_routes.router, prefix="/avatar", tags=["Avatar"])
 app.include_router(animation_routes.router, prefix="/animations", tags=["Animations"])
+app.include_router(report_routes.router, prefix="/reports", tags=["Medical Reports"])
+app.include_router(notification_routes.router, prefix="/notifications", tags=["Notifications"])
 
 # Mount static file directories
 app.mount("/media", StaticFiles(directory="media"), name="media")

@@ -50,6 +50,7 @@ class AppointmentUpdate(BaseModel):
     appointment_type: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[AppointmentStatus] = None
+    completion_notes: Optional[str] = None
 
 class AppointmentResponse(AppointmentBase):
     id: str
@@ -58,6 +59,7 @@ class AppointmentResponse(AppointmentBase):
     updated_at: datetime
     doctor_name: Optional[str] = None
     patient_name: Optional[str] = None
+    completion_notes: Optional[str] = None
 
 class AppointmentSlot(BaseModel):
     date: date
@@ -120,7 +122,8 @@ class AppointmentModel:
                 notes=data.get("notes"),
                 status=status,
                 created_at=data.get("created_at"),
-                updated_at=data.get("updated_at")
+                updated_at=data.get("updated_at"),
+                completion_notes=data.get("completion_notes")
             )
         except Exception as e:
             logger.error(f"Error converting appointment data: {str(e)}")

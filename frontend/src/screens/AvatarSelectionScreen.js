@@ -69,8 +69,16 @@ export default function AvatarSelectionScreen({ navigation }) {
           throw new Error('Failed to save avatar');
         }
 
+        // Get user role to navigate to correct home screen
+        const userRole = await AsyncStorage.getItem('user_role');
+        
         Alert.alert('Success', 'Avatar created successfully!');
-        navigation.navigate('PatientHome');
+        
+        if (userRole === 'doctor') {
+          navigation.navigate('DoctorHome');
+        } else {
+          navigation.navigate('PatientHome');
+        }
       }
     } catch (error) {
       console.error('Error handling RPM message:', error);
@@ -138,9 +146,11 @@ export default function AvatarSelectionScreen({ navigation }) {
           <Text style={styles.buttonText}>Start Creating</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => {
+        <TouchableOpacity onPress={async () => {
+          const userRole = await AsyncStorage.getItem('user_role');
+          const homeScreen = userRole === 'doctor' ? 'DoctorHome' : 'PatientHome';
           Alert.alert('Note', 'You can create an avatar later from your profile settings');
-          navigation.navigate('PatientHome');
+          navigation.navigate(homeScreen);
         }}>
           <Text style={styles.skip}>Skip for now</Text>
         </TouchableOpacity>

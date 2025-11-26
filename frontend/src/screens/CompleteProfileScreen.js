@@ -37,7 +37,11 @@ export default function CompleteProfileScreen({ navigation, route }) {
 
       if (response.ok) {
         const profile = await response.json();
-        setUserRole(profile.role || 'patient');
+        const role = profile.role || 'patient';
+        setUserRole(role);
+        // Store role for later use
+        await AsyncStorage.setItem('user_role', role);
+        await AsyncStorage.setItem('user_email', profile.email);
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
@@ -116,14 +120,8 @@ export default function CompleteProfileScreen({ navigation, route }) {
 
       Alert.alert('Success', 'Profile completed successfully!');
       
-      // Navigate based on role
-      if (userRole === 'patient') {
-        navigation.navigate('AvatarSelection');
-      } else {
-        // For doctor, go directly to doctor home (to be implemented)
-        // navigation.navigate('DoctorHome');
-        Alert.alert('Success', 'Doctor profile setup complete!');
-      }
+      // Both patients and doctors go to avatar selection
+      navigation.navigate('AvatarSelection');
       
     } catch (error) {
       console.error('Error completing profile:', error);

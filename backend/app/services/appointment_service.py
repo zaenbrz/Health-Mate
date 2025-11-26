@@ -203,3 +203,18 @@ class AppointmentService:
         except Exception as e:
             logger.error(f"Error fetching upcoming appointments: {str(e)}")
             raise
+
+    def get_appointments_by_doctor_and_patient(self, doctor_email: str, patient_email: str) -> List[Dict]:
+        """Get all appointments between a specific doctor and patient"""
+        try:
+            appointments = list(db.appointments.find(
+                {
+                    "doctor_email": doctor_email,
+                    "patient_email": patient_email
+                },
+                {"_id": 0}
+            ))
+            return appointments
+        except Exception as e:
+            logger.error(f"Error fetching appointments by doctor and patient: {str(e)}")
+            return []

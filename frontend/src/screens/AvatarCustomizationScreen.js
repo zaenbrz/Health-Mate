@@ -153,8 +153,16 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
         throw new Error('Failed to save avatar');
       }
 
+      // Get user role to navigate to correct home screen
+      const userRole = await AsyncStorage.getItem('user_role');
+      
       Alert.alert('Success', 'Avatar customized successfully!');
-      navigation.navigate('PatientHome');
+      
+      if (userRole === 'doctor') {
+        navigation.navigate('DoctorHome');
+      } else {
+        navigation.navigate('PatientHome');
+      }
       
     } catch (error) {
       console.error('Error saving avatar:', error);
@@ -244,7 +252,11 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
       <View style={styles.actionContainer}>
         <TouchableOpacity 
           style={styles.skipButton} 
-          onPress={() => navigation.navigate('PatientHome')}
+          onPress={async () => {
+            const userRole = await AsyncStorage.getItem('user_role');
+            const homeScreen = userRole === 'doctor' ? 'DoctorHome' : 'PatientHome';
+            navigation.navigate(homeScreen);
+          }}
         >
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>

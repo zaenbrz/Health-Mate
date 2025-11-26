@@ -22,23 +22,27 @@ export default function LoginScreen({ navigation }) {
         const profile = await response.json();
         const userRole = profile.role || 'patient';
         
+        // Store user role for later use
+        await AsyncStorage.setItem('user_role', userRole);
+        await AsyncStorage.setItem('user_email', profile.email);
+        
         // Check if basic profile is complete
         if (!profile.name) {
           navigation.navigate('CompleteProfile');
           return;
         }
         
-        // For patients, check if avatar is set
-        if (userRole === 'patient') {
-          if (!profile.avatar_id) {
-            navigation.navigate('AvatarSelection');
-          } else {
-            navigation.navigate('PatientHome');
-          }
-        } else if (userRole === 'doctor') {
-          // For doctors, navigate to doctor home (to be implemented)
-          // navigation.navigate('DoctorHome');
-          Alert.alert('Success', 'Welcome back, Doctor!');
+        // Check if avatar is set (required for both doctors and patients)
+        if (!profile.avatar_id) {
+          navigation.navigate('AvatarSelection');
+          return;
+        }
+        
+        // Navigate to appropriate home screen based on role
+        if (userRole === 'doctor') {
+          navigation.navigate('DoctorHome');
+        } else {
+          navigation.navigate('PatientHome');
         }
       } else {
         // If profile doesn't exist or error, go to complete profile
@@ -67,8 +71,10 @@ export default function LoginScreen({ navigation }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Login failed');
         console.log("Response received:", data);
-        // store token
+        // Store token and user info
         await AsyncStorage.setItem('access_token', data.access_token);
+        await AsyncStorage.setItem('user_role', data.role);
+        await AsyncStorage.setItem('user_email', data.email);
         // Check if profile is complete
         await checkProfileComplete(data.access_token);
       })

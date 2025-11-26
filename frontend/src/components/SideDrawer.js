@@ -24,7 +24,9 @@ export default function SideDrawer({
   onManageAvatar,
   onEditProfile,
   onScanAnalysis,
-  onLogout 
+  onLogout,
+  customMenuItems, // New prop for custom menu items
+  navigation // Navigation prop for patient appointments
 }) {
   const [slideAnim] = React.useState(new Animated.Value(-DRAWER_WIDTH));
 
@@ -116,41 +118,80 @@ export default function SideDrawer({
 
             {/* Settings Menu Items */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Settings</Text>
+              <Text style={styles.sectionTitle}>Menu</Text>
               
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={onManageAvatar}
-              >
-                <Text style={styles.menuIcon}>👤</Text>
-                <Text style={styles.menuText}>Manage Avatar</Text>
-              </TouchableOpacity>
+              {/* Custom menu items if provided (for doctor) */}
+              {customMenuItems && customMenuItems.map((item, index) => (
+                <TouchableOpacity 
+                  key={index}
+                  style={styles.menuItem}
+                  onPress={item.onPress}
+                >
+                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Text style={styles.menuText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+              
+              {/* Default menu items if no custom items (for patient) */}
+              {!customMenuItems && (
+                <>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={onManageAvatar}
+                  >
+                    <Text style={styles.menuIcon}>👤</Text>
+                    <Text style={styles.menuText}>Manage Avatar</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={onEditProfile}
-              >
-                <Text style={styles.menuIcon}>✏️</Text>
-                <Text style={styles.menuText}>Complete Profile</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={onEditProfile}
+                  >
+                    <Text style={styles.menuIcon}>✏️</Text>
+                    <Text style={styles.menuText}>Complete Profile</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={onScanAnalysis}
-              >
-                <Text style={styles.menuIcon}>🔬</Text>
-                <Text style={styles.menuText}>Scan Analysis</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onClose();
+                      navigation.navigate('PatientAppointments');
+                    }}
+                  >
+                    <Text style={styles.menuIcon}>📅</Text>
+                    <Text style={styles.menuText}>Appointments</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem}>
-                <Text style={styles.menuIcon}>🔔</Text>
-                <Text style={styles.menuText}>Notifications</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={onScanAnalysis}
+                  >
+                    <Text style={styles.menuIcon}>🔬</Text>
+                    <Text style={styles.menuText}>Scan Analysis</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem}>
-                <Text style={styles.menuIcon}>🔒</Text>
-                <Text style={styles.menuText}>Privacy & Security</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onClose();
+                      navigation.navigate('MedicalReports');
+                    }}
+                  >
+                    <Text style={styles.menuIcon}>📄</Text>
+                    <Text style={styles.menuText}>Medical Reports</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuIcon}>🔔</Text>
+                    <Text style={styles.menuText}>Notifications</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuIcon}>🔒</Text>
+                    <Text style={styles.menuText}>Privacy & Security</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
             <View style={styles.divider} />
@@ -175,7 +216,7 @@ export default function SideDrawer({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   backdrop: {
     position: 'absolute',
@@ -190,7 +231,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
