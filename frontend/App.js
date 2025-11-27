@@ -17,6 +17,7 @@ import DoctorAvailabilityScreen from './src/screens/DoctorAvailabilityScreen';
 import PatientAppointmentsScreen from './src/screens/PatientAppointmentsScreen';
 import BookAppointmentScreen from './src/screens/BookAppointmentScreen';
 import MedicalReportsScreen from './src/screens/MedicalReportsScreen';
+import PrivacySecurityScreen from './src/screens/PrivacySecurityScreen';
 
 const Stack = createStackNavigator();
 
@@ -38,6 +39,7 @@ export default function App() {
         <Stack.Screen name="PatientAppointments" component={PatientAppointmentsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="BookAppointment" component={BookAppointmentScreen} options={{ headerShown: false }} />
         <Stack.Screen name="MedicalReports" component={MedicalReportsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

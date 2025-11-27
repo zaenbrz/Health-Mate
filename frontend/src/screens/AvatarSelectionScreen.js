@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
 
@@ -91,15 +92,15 @@ export default function AvatarSelectionScreen({ navigation }) {
   if (showCreator) {
     return (
       <View style={{ flex: 1 }}>
-        <View style={styles.webviewHeader}>
+        <LinearGradient colors={["#6366f1", "#3b82f6"]} style={styles.webviewHeader}>
           <Text style={styles.webviewTitle}>Create Your Avatar</Text>
           <TouchableOpacity 
             onPress={() => setShowCreator(false)}
             style={styles.closeButton}
           >
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Ionicons name="close" size={24} color="#ffffff" />
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
         <WebView
           ref={webViewRef}
           source={{ uri: `https://${RPM_SUBDOMAIN}.readyplayer.me/avatar?frameApi&bodyType=fullbody` }}
@@ -112,8 +113,8 @@ export default function AvatarSelectionScreen({ navigation }) {
         />
         {loading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#60a5fa" />
-            <Text style={styles.loadingText}>Saving avatar...</Text>
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text style={styles.loadingText}>Saving your avatar...</Text>
           </View>
         )}
       </View>
@@ -121,112 +122,142 @@ export default function AvatarSelectionScreen({ navigation }) {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
-        <Text style={styles.title}>Choose Your Avatar</Text>
-        <Text style={styles.subtitle}>Create a personalized 3D avatar for your profile</Text>
-      </LinearGradient>
+    <LinearGradient colors={["#f8fafc", "#e8eef9", "#f8fafc"]} style={{ flex: 1 }}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={async () => {
+          const userRole = await AsyncStorage.getItem('user_role');
+          const homeScreen = userRole === 'doctor' ? 'DoctorHome' : 'PatientHome';
+          navigation.navigate(homeScreen);
+        }}
+      >
+        <Ionicons name="arrow-back" size={24} color="#ffffff" />
+      </TouchableOpacity>
 
       <View style={styles.container}>
+        <View style={styles.headerContent}>
+          <Ionicons name="person" size={80} color="#7E5CAD" />
+          <Text style={styles.title}>Create Your Avatar</Text>
+        </View>
+
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>🎨 Create Your Avatar</Text>
-          <Text style={styles.infoText}>
-            You'll be able to customize:
-          </Text>
-          <Text style={styles.infoItem}>• Face shape and features</Text>
-          <Text style={styles.infoItem}>• Hair style and color</Text>
-          <Text style={styles.infoItem}>• Outfits and accessories</Text>
-          <Text style={styles.infoItem}>• Glasses and face masks</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="color-palette" size={28} color="#5BA3E0" />
+            <Text style={styles.infoTitle}>Personalize Your Look</Text>
+          </View>
+          <View style={styles.featuresList}>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.featureText}>Face shape and features</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.featureText}>Hair style and color</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.featureText}>Outfits and accessories</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.featureText}>Glasses and masks</Text>
+            </View>
+          </View>
         </View>
 
         <TouchableOpacity 
           style={styles.button} 
           onPress={openAvatarCreator}
         >
+          <Ionicons name="brush" size={20} color="#ffffff" />
           <Text style={styles.buttonText}>Start Creating</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity onPress={async () => {
-          const userRole = await AsyncStorage.getItem('user_role');
-          const homeScreen = userRole === 'doctor' ? 'DoctorHome' : 'PatientHome';
-          Alert.alert('Note', 'You can create an avatar later from your profile settings');
-          navigation.navigate(homeScreen);
-        }}>
-          <Text style={styles.skip}>Skip for now</Text>
-        </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 50,
+    padding: 8,
+    zIndex: 10,
   },
   container: {
     flex: 1,
-    padding: 20,
+    padding: 24,
     justifyContent: 'center',
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginTop: 20,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   infoCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 15,
-    padding: 20,
+    borderRadius: 20,
+    padding: 28,
     marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
   },
   infoTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 15,
   },
-  infoText: {
-    fontSize: 16,
-    color: '#64748b',
-    marginBottom: 10,
-  },
-  infoItem: {
-    fontSize: 15,
-    color: '#475569',
-    marginLeft: 10,
+  featuresList: {
+    gap: 12,
     marginTop: 8,
   },
-  button: {
-    backgroundColor: '#60a5fa',
-    borderRadius: 10,
-    padding: 15,
+  featureItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    gap: 12,
+  },
+  featureText: {
+    fontSize: 15,
+    color: '#64748b',
+    flex: 1,
+  },
+  button: {
+    backgroundColor: '#5BA3E0',
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  skip: {
-    color: '#94a3b8',
-    textAlign: 'center',
-    fontSize: 14,
-    marginTop: 10,
+    fontSize: 17,
+    fontWeight: '700',
   },
   webviewHeader: {
     flexDirection: 'row',
@@ -235,35 +266,30 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 15,
-    backgroundColor: '#60a5fa',
   },
   webviewTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#ffffff',
   },
   closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeButtonText: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(99, 102, 241, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
     color: '#ffffff',
-    marginTop: 10,
+    marginTop: 16,
     fontSize: 16,
+    fontWeight: '600',
   },
 });

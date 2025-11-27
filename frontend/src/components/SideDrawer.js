@@ -9,6 +9,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -28,28 +29,28 @@ export default function SideDrawer({
   customMenuItems, // New prop for custom menu items
   navigation // Navigation prop for patient appointments
 }) {
-  const [slideAnim] = React.useState(new Animated.Value(-DRAWER_WIDTH));
+  const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
   React.useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
-        tension: 65,
-        friction: 11,
+        tension: 50,
+        friction: 8,
       }).start();
     } else {
       Animated.timing(slideAnim, {
         toValue: -DRAWER_WIDTH,
-        duration: 250,
+        duration: 300,
         useNativeDriver: true,
       }).start();
     }
   }, [visible]);
 
   const languages = [
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'ur', name: 'اردو', flag: '🇵🇰' },
+    { code: 'en', name: 'English' },
+    { code: 'ur', name: 'اردو' },
   ];
 
   return (
@@ -98,7 +99,6 @@ export default function SideDrawer({
                   ]}
                   onPress={() => onLanguageChange(lang.code)}
                 >
-                  <Text style={styles.languageFlag}>{lang.flag}</Text>
                   <Text
                     style={[
                       styles.languageName,
@@ -108,7 +108,7 @@ export default function SideDrawer({
                     {lang.name}
                   </Text>
                   {selectedLanguage === lang.code && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <Ionicons name="checkmark" size={20} color="#60a5fa" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -127,7 +127,7 @@ export default function SideDrawer({
                   style={styles.menuItem}
                   onPress={item.onPress}
                 >
-                  <Text style={styles.menuIcon}>{item.icon}</Text>
+                  <Ionicons name={item.icon} size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                   <Text style={styles.menuText}>{item.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -139,7 +139,7 @@ export default function SideDrawer({
                     style={styles.menuItem}
                     onPress={onManageAvatar}
                   >
-                    <Text style={styles.menuIcon}>👤</Text>
+                    <Ionicons name="person-circle-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Manage Avatar</Text>
                   </TouchableOpacity>
 
@@ -147,7 +147,7 @@ export default function SideDrawer({
                     style={styles.menuItem}
                     onPress={onEditProfile}
                   >
-                    <Text style={styles.menuIcon}>✏️</Text>
+                    <Ionicons name="create-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Complete Profile</Text>
                   </TouchableOpacity>
 
@@ -158,7 +158,7 @@ export default function SideDrawer({
                       navigation.navigate('PatientAppointments');
                     }}
                   >
-                    <Text style={styles.menuIcon}>📅</Text>
+                    <Ionicons name="calendar-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Appointments</Text>
                   </TouchableOpacity>
 
@@ -166,7 +166,7 @@ export default function SideDrawer({
                     style={styles.menuItem}
                     onPress={onScanAnalysis}
                   >
-                    <Text style={styles.menuIcon}>🔬</Text>
+                    <Ionicons name="search-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Scan Analysis</Text>
                   </TouchableOpacity>
 
@@ -177,17 +177,18 @@ export default function SideDrawer({
                       navigation.navigate('MedicalReports');
                     }}
                   >
-                    <Text style={styles.menuIcon}>📄</Text>
+                    <Ionicons name="document-text-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Medical Reports</Text>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.menuItem}>
-                    <Text style={styles.menuIcon}>🔔</Text>
-                    <Text style={styles.menuText}>Notifications</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.menuItem}>
-                    <Text style={styles.menuIcon}>🔒</Text>
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={() => {
+                      onClose();
+                      navigation.navigate('PrivacySecurity');
+                    }}
+                  >
+                    <Ionicons name="shield-checkmark-outline" size={22} color="rgba(226, 232, 240, 0.9)" style={styles.menuIcon} />
                     <Text style={styles.menuText}>Privacy & Security</Text>
                   </TouchableOpacity>
                 </>
@@ -201,7 +202,7 @@ export default function SideDrawer({
               style={styles.logoutButton}
               onPress={onLogout}
             >
-              <Text style={styles.logoutIcon}>🚪</Text>
+              <Ionicons name="log-out-outline" size={22} color="#fca5a5" style={styles.logoutIcon} />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
 
@@ -216,7 +217,7 @@ export default function SideDrawer({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdrop: {
     position: 'absolute',
@@ -231,27 +232,31 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(71, 78, 147, 0.85)',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
     elevation: 10,
   },
   profileSection: {
     alignItems: 'center',
     paddingVertical: 40,
     paddingHorizontal: 20,
-    backgroundColor: '#e3f2fd',
+    backgroundColor: 'rgba(71, 78, 147, 0.4)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(126, 92, 173, 0.3)',
   },
   avatarCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#60a5fa',
+    backgroundColor: '#5BA3E0',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 15,
+    borderWidth: 2,
+    borderColor: 'rgba(91, 163, 224, 0.4)',
   },
   avatarInitial: {
     fontSize: 32,
@@ -261,16 +266,16 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e3a8a',
+    color: '#fff',
     marginBottom: 5,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#64748b',
+    color: 'rgba(226, 232, 240, 0.8)',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
     marginVertical: 10,
   },
   section: {
@@ -280,7 +285,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#94a3b8',
+    color: 'rgba(148, 163, 184, 0.9)',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 15,
@@ -292,10 +297,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 10,
     marginBottom: 8,
-    backgroundColor: '#f8fafc',
+    backgroundColor: 'rgba(109, 40, 217, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   languageOptionSelected: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#3b82f6',
     borderWidth: 2,
     borderColor: '#60a5fa',
   },
@@ -305,16 +312,16 @@ const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: 16,
-    color: '#475569',
+    color: 'rgba(226, 232, 240, 0.9)',
     flex: 1,
   },
   languageNameSelected: {
-    color: '#1e3a8a',
+    color: '#fff',
     fontWeight: '600',
   },
   checkmark: {
     fontSize: 20,
-    color: '#60a5fa',
+    color: '#93c5fd',
     fontWeight: 'bold',
   },
   menuItem: {
@@ -332,7 +339,7 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 16,
-    color: '#334155',
+    color: 'rgba(226, 232, 240, 0.9)',
     fontWeight: '500',
   },
   logoutButton: {
@@ -343,7 +350,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 10,
     borderRadius: 10,
-    backgroundColor: '#fee2e2',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   logoutIcon: {
     fontSize: 22,
@@ -352,7 +361,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 16,
-    color: '#dc2626',
+    color: '#fca5a5',
     fontWeight: '600',
   },
   bottomPadding: {

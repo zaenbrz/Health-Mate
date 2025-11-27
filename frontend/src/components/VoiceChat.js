@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
@@ -9,6 +10,13 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [permissionResponse, requestPermission] = Audio.usePermissions();
+  
+  // Animation values
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const wave1Anim = useRef(new Animated.Value(0)).current;
+  const wave2Anim = useRef(new Animated.Value(0)).current;
+  const wave3Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     setupAudio();
@@ -19,6 +27,88 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       onProcessingChange(isProcessing || isRecording);
     }
   }, [isProcessing, isRecording]);
+
+  // Animate when recording
+  useEffect(() => {
+    if (isRecording) {
+      // Pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+
+      // Wave animations with stagger
+      const waveAnimation = (anim, delay) => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: 0,
+              duration: 0,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      };
+
+      waveAnimation(wave1Anim, 0);
+      waveAnimation(wave2Anim, 500);
+      waveAnimation(wave3Anim, 1000);
+    } else {
+      // Idle state - gentle breathing animation
+      pulseAnim.setValue(1);
+      wave1Anim.setValue(0);
+      wave2Anim.setValue(0);
+      wave3Anim.setValue(0);
+      
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [isRecording]);
+
+  // Scale animation on press
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
 
   async function setupAudio() {
     try {
@@ -222,29 +312,117 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
 
   return (
     <View style={styles.micContainer}>
-      <TouchableOpacity
-        style={[
-          styles.micButton,
-          isRecording && styles.micButtonRecording,
-          isProcessing && styles.micButtonProcessing
-        ]}
-        onPress={handleMicPress}
-        disabled={isProcessing}
-      >
-        {isProcessing ? (
-          <ActivityIndicator size="large" color="#fff" />
-        ) : (
-          <Text style={styles.micIcon}>
-            {isRecording ? '⏹️' : '🎤'}
-          </Text>
-        )}
-      </TouchableOpacity>
-      
+      {/* Animated wave rings - only show when recording */}
       {isRecording && (
-        <Text style={styles.recordingText}>Recording...</Text>
+        <>
+          <Animated.View
+            style={[
+              styles.waveRing,
+              {
+                opacity: wave1Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.6, 0],
+                }),
+                transform: [
+                  {
+                    scale: wave1Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 2],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.waveRing,
+              {
+                opacity: wave2Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.6, 0],
+                }),
+                transform: [
+                  {
+                    scale: wave2Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 2],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.waveRing,
+              {
+                opacity: wave3Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.6, 0],
+                }),
+                transform: [
+                  {
+                    scale: wave3Anim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 2],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        </>
+      )}
+
+      {/* Main button with pulse effect */}
+      <Animated.View
+        style={{
+          transform: [{ scale: isRecording ? pulseAnim : scaleAnim }],
+        }}
+      >
+        <TouchableOpacity
+          style={[
+            styles.micButton,
+            isRecording && styles.micButtonRecording,
+            isProcessing && styles.micButtonProcessing
+          ]}
+          onPress={handleMicPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={isProcessing}
+          activeOpacity={0.8}
+        >
+          {/* Gradient overlay for depth */}
+          <View style={styles.buttonGradientOverlay} />
+          
+          <View style={styles.buttonInner}>
+            {isProcessing ? (
+              <View style={styles.processingContainer}>
+                <ActivityIndicator size="large" color="#fff" />
+              </View>
+            ) : (
+              <Ionicons 
+                name={isRecording ? "stop-circle" : "mic"} 
+                size={isRecording ? 40 : 36} 
+                color="#fff" 
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+      
+      {/* Status text */}
+      {isRecording && (
+        <View style={styles.statusContainer}>
+          <View style={styles.recordingDot} />
+          <Text style={styles.statusText}>Listening...</Text>
+        </View>
       )}
       {isProcessing && (
-        <Text style={styles.processingText}>Processing...</Text>
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusText}>Thinking...</Text>
+        </View>
       )}
     </View>
   );
@@ -254,40 +432,98 @@ const styles = StyleSheet.create({
   micContainer: {
     alignItems: 'center',
     paddingVertical: 20,
+    position: 'relative',
+  },
+  waveRing: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#ef4444',
+    backgroundColor: 'transparent',
+  },
+  idleRing: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 2,
+    borderColor: '#5BA3E0',
+    backgroundColor: 'transparent',
   },
   micButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#60a5fa',
+    backgroundColor: '#5BA3E0',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: '#5BA3E0',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 4,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    overflow: 'visible',
   },
   micButtonRecording: {
     backgroundColor: '#ef4444',
+    shadowColor: '#ef4444',
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   micButtonProcessing: {
-    backgroundColor: '#94a3b8',
+    backgroundColor: '#474E93',
+    shadowColor: '#474E93',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  micIcon: {
-    fontSize: 40,
+  buttonInner: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  recordingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#ef4444',
+  buttonGradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  tapToSpeakText: {
+    fontSize: 10,
+    color: '#fff',
+    marginTop: 4,
     fontWeight: '600',
+    opacity: 0.9,
   },
-  processingText: {
-    marginTop: 10,
+  processingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 20,
+  },
+  recordingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+    marginRight: 8,
+  },
+  statusText: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: '#fff',
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
 

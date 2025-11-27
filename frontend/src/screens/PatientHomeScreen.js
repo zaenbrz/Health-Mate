@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
@@ -20,10 +20,29 @@ export default function PatientHomeScreen({ navigation }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const avatarViewerRef = useRef(null);
+  
+  // Background gradient animation
+  const gradientAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchPatientProfile();
     loadLanguagePreference();
+    
+    // Start gradient animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(gradientAnim, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(gradientAnim, {
+          toValue: 0,
+          duration: 8000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
   }, []);
 
   useEffect(() => {
@@ -125,6 +144,7 @@ export default function PatientHomeScreen({ navigation }) {
 
   async function handleLogout() {
     try {
+      setDrawerVisible(false); // Close drawer first
       await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('refresh_token');
       navigation.navigate('Login');
@@ -142,7 +162,19 @@ export default function PatientHomeScreen({ navigation }) {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+    <View style={{ flex: 1 }}>
+      {/* Light gradient background */}
+      <LinearGradient
+        colors={['#ffffff', '#fafbfc', '#f4f5f7']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        }}
+      />
+      
       {/* Toast notifications at the top level */}
       <NotificationToast />
       
@@ -172,7 +204,7 @@ export default function PatientHomeScreen({ navigation }) {
         onLogout={handleLogout}
       />
       
-      <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
+      <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity 
             style={styles.hamburgerButton}
@@ -272,7 +304,7 @@ const styles = StyleSheet.create({
   },
   hamburgerIcon: {
     fontSize: 28,
-    color: '#1e3a8a',
+    color: '#ffffff',
     fontWeight: '600',
   },
   headerCenter: {
@@ -283,7 +315,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontStyle: 'italic',
-    color: '#1e3a8a',
+    color: '#ffffff',
     marginBottom: 8,
   },
   subtitleContainer: {
@@ -297,7 +329,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     fontStyle: 'italic',
-    color: '#1e3a8a',
+    color: '#ffffff',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -343,12 +375,12 @@ const styles = StyleSheet.create({
   },
   noAvatarText: {
     fontSize: 18,
-    color: '#1e3a8a',
+    color: '#ffffff',
     fontWeight: '600',
     marginBottom: 15,
   },
   createAvatarButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#5BA3E0',
     paddingHorizontal: 25,
     paddingVertical: 12,
     borderRadius: 25,
@@ -372,7 +404,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e3a8a',
+    color: '#ffffff',
   },
   avatarHint: {
     fontSize: 10,

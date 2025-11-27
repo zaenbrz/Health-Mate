@@ -387,18 +387,26 @@ const MedicalReportsScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+    <LinearGradient colors={['#6B70A8', '#9896C4']} style={styles.container}>
+      <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Medical Reports</Text>
-        <View style={styles.backButton} />
-      </View>
+        <View style={styles.headerContent}>
+          <Ionicons name="document-text" size={32} color="#ffffff" />
+          <Text style={styles.headerTitle}>Medical Reports</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
 
       <View style={styles.content}>
         <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color="#667eea" />
+          <View style={styles.infoIconCircle}>
+            <Ionicons name="information-circle" size={24} color="#5BA3E0" />
+          </View>
           <Text style={styles.infoText}>
             Generate comprehensive medical reports including your health history, consultations, and scan results.
           </Text>
@@ -408,12 +416,13 @@ const MedicalReportsScreen = ({ navigation }) => {
           style={styles.generateButton}
           onPress={generateNewReport}
           disabled={generating}
+          activeOpacity={0.8}
         >
           {generating ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Ionicons name="add-circle" size={24} color="#fff" />
               <Text style={styles.generateButtonText}>Generate New Report</Text>
             </>
           )}
@@ -421,7 +430,7 @@ const MedicalReportsScreen = ({ navigation }) => {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#667eea" />
+            <ActivityIndicator size="large" color="#7E5CAD" />
             <Text style={styles.loadingText}>Loading reports...</Text>
           </View>
         ) : (
@@ -450,63 +459,88 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    paddingTop: 60,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
   },
   backButton: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#ffffff',
   },
   content: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingTop: 20,
+    paddingTop: 24,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#ffffff',
     marginHorizontal: 20,
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5BA3E0',
+  },
+  infoIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(91, 163, 224, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   infoText: {
     flex: 1,
-    marginLeft: 10,
     fontSize: 14,
-    color: '#333',
+    color: '#64748b',
     lineHeight: 20,
   },
   generateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#667eea',
+    backgroundColor: '#5BA3E0',
     marginHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginBottom: 24,
+    shadowColor: '#5BA3E0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   generateButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 10,
   },
   scrollView: {
@@ -525,19 +559,21 @@ const styles = StyleSheet.create({
   },
   reportCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 8,
+    elevation: 4,
+    overflow: 'hidden',
   },
   reportHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
+    padding: 18,
+    backgroundColor: '#ffffff',
   },
   reportHeaderLeft: {
     flexDirection: 'row',
@@ -545,18 +581,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reportHeaderText: {
-    marginLeft: 12,
+    marginLeft: 14,
     flex: 1,
   },
   reportId: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '700',
+    color: '#474E93',
     marginBottom: 4,
   },
   reportDate: {
     fontSize: 13,
-    color: '#666',
+    color: '#64748b',
   },
   reportDetails: {
     borderTopWidth: 1,
@@ -564,31 +600,33 @@ const styles = StyleSheet.create({
     padding: 15,
   },
   diagnosisSection: {
-    backgroundColor: '#f0f4ff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
+    backgroundColor: 'rgba(126, 92, 173, 0.08)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#7E5CAD',
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 12,
   },
   diagnosisText: {
     fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-    marginBottom: 10,
+    color: '#64748b',
+    lineHeight: 22,
+    marginBottom: 12,
   },
   subsection: {
-    marginTop: 8,
+    marginTop: 10,
   },
   subsectionTitle: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#667eea',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: '#7E5CAD',
+    marginBottom: 6,
   },
   bulletPoint: {
     fontSize: 13,
@@ -597,18 +635,25 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   consultationsSection: {
-    backgroundColor: '#fff8f0',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
+    backgroundColor: 'rgba(91, 163, 224, 0.08)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#5BA3E0',
   },
   consultationItem: {
     backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 6,
-    marginBottom: 8,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#667eea',
+    borderLeftColor: '#5BA3E0',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   consultationDate: {
     fontSize: 12,
@@ -626,18 +671,25 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   scansSection: {
-    backgroundColor: '#f0fff4',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
+    backgroundColor: 'rgba(114, 186, 169, 0.08)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#72BAA9',
   },
   scanItem: {
     backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 6,
-    marginBottom: 8,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#4CAF50',
+    borderLeftColor: '#72BAA9',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   scanType: {
     fontSize: 14,
@@ -699,13 +751,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   downloadButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#72BAA9',
   },
   shareButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#5BA3E0',
   },
   deleteButton: {
-    backgroundColor: '#f44336',
+    backgroundColor: '#ef4444',
   },
   actionButtonText: {
     color: '#fff',

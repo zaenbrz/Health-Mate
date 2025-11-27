@@ -8,6 +8,7 @@ import json
 import tempfile
 import uuid
 from datetime import datetime
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -431,13 +432,15 @@ class SpeechService:
             ]
             
             logger.info(f"Running Rhubarb: {' '.join(cmd)}")
-            
+            start_time = time.time()
             process = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=120
             )
+            end_time = time.time()
+            logger.info(f"Rhubarb finished in {end_time - start_time:.2f} seconds.")
             
             if process.returncode != 0:
                 logger.error(f"Rhubarb failed: {process.stderr}")
@@ -504,7 +507,6 @@ class SpeechService:
         
         return mapped_cues
 
-    
 
-    
- 
+
+

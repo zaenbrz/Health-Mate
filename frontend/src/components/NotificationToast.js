@@ -6,10 +6,11 @@ import CONFIG from '../config';
 
 const { width } = Dimensions.get('window');
 
+// Updated glassmorphic notification toast with purple-blue palette
 const NotificationToast = () => {
   const [notifications, setNotifications] = useState([]);
   const [lastNotificationId, setLastNotificationId] = useState(null);
-  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const slideAnim = useRef(new Animated.Value(-150)).current;
 
   useEffect(() => {
     // Check for new notifications every 10 seconds
@@ -57,13 +58,13 @@ const NotificationToast = () => {
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
-        tension: 50,
-        friction: 8,
+        tension: 65,
+        friction: 11,
       }),
       Animated.delay(4000), // Show for 4 seconds
       Animated.timing(slideAnim, {
-        toValue: -100,
-        duration: 300,
+        toValue: -150,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -73,8 +74,8 @@ const NotificationToast = () => {
 
   const dismissNotification = () => {
     Animated.timing(slideAnim, {
-      toValue: -100,
-      duration: 300,
+      toValue: -150,
+      duration: 250,
       useNativeDriver: true,
     }).start(() => {
       setNotifications([]);
@@ -103,12 +104,12 @@ const NotificationToast = () => {
 
   const getPriorityColor = (priority) => {
     const colors = {
-      low: '#3498db',
-      medium: '#f39c12',
-      high: '#e74c3c',
-      urgent: '#c0392b'
+      low: '#5BA3E0',
+      medium: '#72BAA9',
+      high: '#B08CB3',
+      urgent: '#7E5CAD'
     };
-    return colors[priority] || '#667eea';
+    return colors[priority] || '#7E5CAD';
   };
 
   const getNotificationIcon = (type) => {
@@ -132,19 +133,24 @@ const NotificationToast = () => {
         styles.container,
         {
           transform: [{ translateY: slideAnim }],
-          backgroundColor: getPriorityColor(notification.priority),
         },
       ]}
     >
       <TouchableOpacity
-        style={styles.content}
+        style={[
+          styles.content,
+          { borderLeftColor: getPriorityColor(notification.priority) }
+        ]}
         onPress={() => handlePress(notification)}
         activeOpacity={0.9}
       >
-        <View style={styles.iconContainer}>
+        <View style={[
+          styles.iconContainer,
+          { backgroundColor: getPriorityColor(notification.priority) }
+        ]}>
           <Ionicons
             name={getNotificationIcon(notification.type)}
-            size={28}
+            size={24}
             color="#fff"
           />
         </View>
@@ -163,7 +169,7 @@ const NotificationToast = () => {
           onPress={dismissNotification}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="close" size={22} color="#fff" />
+          <Ionicons name="close-circle" size={24} color="#ffffff" />
         </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
@@ -178,42 +184,52 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 9999,
     elevation: 10,
-    paddingTop: 50, // Account for status bar
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    paddingTop: 50,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: 'rgba(71, 78, 147, 0.95)',
+    borderRadius: 16,
+    padding: 16,
+    borderLeftWidth: 4,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+    backdropFilter: 'blur(10px)',
   },
   iconContainer: {
-    marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
   },
   textContainer: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
   title: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 4,
+    letterSpacing: 0.3,
   },
   message: {
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
-    opacity: 0.95,
-    lineHeight: 18,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   closeButton: {
     padding: 4,
+    opacity: 0.9,
   },
 });
 

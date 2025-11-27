@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
@@ -130,25 +130,26 @@ const NotificationBell = () => {
 
       <Modal
         visible={modalVisible}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close-circle" size={30} color="#666" />
-              </TouchableOpacity>
-            </View>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Notifications</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close-circle" size={30} color="#fff" />
+                </TouchableOpacity>
+              </View>
 
             <ScrollView style={styles.notificationList}>
               {loading ? (
                 <Text style={styles.loadingText}>Loading...</Text>
               ) : notifications.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="notifications-off-outline" size={60} color="#ccc" />
+                  <Ionicons name="notifications-off-outline" size={60} color="rgba(255, 255, 255, 0.5)" />
                   <Text style={styles.emptyText}>No notifications yet</Text>
                 </View>
               ) : (
@@ -157,7 +158,8 @@ const NotificationBell = () => {
                     key={notification.id}
                     style={[
                       styles.notificationItem,
-                      !notification.read && styles.unreadNotification
+                      !notification.read && styles.unreadNotification,
+                      !notification.read && { borderLeftColor: getPriorityColor(notification.priority) }
                     ]}
                     onPress={() => markAsRead(notification.id)}
                   >
@@ -179,6 +181,7 @@ const NotificationBell = () => {
               )}
             </ScrollView>
           </View>
+          </SafeAreaView>
         </View>
       </Modal>
     </>
@@ -210,14 +213,20 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: 'rgba(71, 78, 147, 0.95)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     maxHeight: '80%',
+    paddingTop: 10,
     paddingBottom: 20,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 15,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -225,19 +234,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: 'rgba(255, 255, 255, 0.15)',
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
   notificationList: {
     padding: 15,
   },
   loadingText: {
     textAlign: 'center',
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 50,
   },
   emptyState: {
@@ -245,27 +254,31 @@ const styles = StyleSheet.create({
     marginTop: 80,
   },
   emptyText: {
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 16,
     marginTop: 15,
   },
   notificationItem: {
     flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
     alignItems: 'flex-start',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   unreadNotification: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
   },
   iconContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -276,24 +289,24 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 4,
   },
   notificationMessage: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 6,
     lineHeight: 20,
   },
   notificationTime: {
     fontSize: 12,
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2196f3',
+    backgroundColor: '#7E5CAD',
     marginLeft: 10,
     marginTop: 5,
   },

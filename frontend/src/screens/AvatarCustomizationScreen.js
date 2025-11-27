@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Image, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
 
@@ -20,11 +21,11 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
 
   // Asset categories
   const categories = [
-    { id: 'outfit', name: 'Outfits', icon: '👕' },
-    { id: 'hairStyle', name: 'Hair', icon: '💇' },
-    { id: 'glasses', name: 'Glasses', icon: '👓' },
-    { id: 'faceMask', name: 'Face Mask', icon: '😷' },
-    { id: 'headwear', name: 'Headwear', icon: '🎩' },
+    { id: 'outfit', name: 'Outfits', icon: 'shirt-outline' },
+    { id: 'hairStyle', name: 'Hair', icon: 'cut-outline' },
+    { id: 'glasses', name: 'Glasses', icon: 'glasses-outline' },
+    { id: 'faceMask', name: 'Face Mask', icon: 'Happy-outline' },
+    { id: 'headwear', name: 'Headwear', icon: 'fitness-outline' },
   ];
 
   useEffect(() => {
@@ -173,18 +174,28 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
-        <Text style={styles.title}>Customize Your Avatar</Text>
-        <Text style={styles.subtitle}>Choose your style</Text>
+    <LinearGradient colors={["#e8eef9", "#d5dff5", "#e8eef9"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={async () => {
+            const userRole = await AsyncStorage.getItem('user_role');
+            const homeScreen = userRole === 'doctor' ? 'DoctorHome' : 'PatientHome';
+            navigation.navigate(homeScreen);
+          }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Customize Avatar</Text>
+        <Text style={styles.subtitle}>Choose your unique style</Text>
       </LinearGradient>
 
       {/* Avatar Preview */}
       <View style={styles.previewContainer}>
         <View style={styles.previewPlaceholder}>
+          <Ionicons name="person" size={60} color="#3b82f6" />
           <Text style={styles.previewText}>Avatar Preview</Text>
-          <Text style={styles.previewHint}>3D preview will render here</Text>
-          {/* TODO: Integrate 3D viewer for GLB file */}
+          <Text style={styles.previewHint}>3D render will appear here</Text>
         </View>
       </View>
 
@@ -199,7 +210,11 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
             ]}
             onPress={() => setSelectedCategory(category.id)}
           >
-            <Text style={styles.categoryIcon}>{category.icon}</Text>
+            <Ionicons 
+              name={category.icon} 
+              size={28} 
+              color={selectedCategory === category.id ? '#ffffff' : '#64748b'} 
+            />
             <Text style={[
               styles.categoryText,
               selectedCategory === category.id && styles.categoryTextActive
@@ -213,7 +228,8 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
       {/* Assets List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#60a5fa" />
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading options...</Text>
         </View>
       ) : (
         <FlatList
@@ -258,6 +274,7 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
             navigation.navigate(homeScreen);
           }}
         >
+          <Ionicons name="close-circle-outline" size={20} color="#94a3b8" />
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -268,167 +285,189 @@ export default function AvatarCustomizationScreen({ navigation, route }) {
           {saving ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.saveButtonText}>Save & Continue</Text>
+            <>
+              <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+              <Text style={styles.saveButtonText}>Save & Continue</Text>
+            </>
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 30,
     alignItems: 'center',
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 60,
+    padding: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e3a8a',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#64748b',
+    fontSize: 15,
+    color: 'rgba(226, 232, 240, 0.8)',
+    marginTop: 6,
   },
   previewContainer: {
-    height: 200,
+    height: 220,
     margin: 20,
-    marginBottom: 10,
+    marginBottom: 15,
   },
   previewPlaceholder: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 15,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   previewText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e3a8a',
+    color: '#ffffff',
+    marginTop: 12,
   },
   previewHint: {
-    fontSize: 12,
-    color: '#94a3b8',
-    marginTop: 5,
+    fontSize: 13,
+    color: 'rgba(148, 163, 184, 0.8)',
+    marginTop: 6,
   },
   categoryContainer: {
-    maxHeight: 80,
+    maxHeight: 90,
     paddingHorizontal: 15,
-    marginBottom: 10,
+    marginBottom: 15,
   },
   categoryTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    marginHorizontal: 5,
-    borderRadius: 20,
-    backgroundColor: 'white',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    marginHorizontal: 6,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
-    minWidth: 90,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    minWidth: 95,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
   },
   categoryTabActive: {
-    backgroundColor: '#60a5fa',
-  },
-  categoryIcon: {
-    fontSize: 24,
-    marginBottom: 5,
+    backgroundColor: '#5BA3E0',
+    borderColor: '#3b82f6',
   },
   categoryText: {
     fontSize: 12,
     color: '#64748b',
     fontWeight: '600',
+    marginTop: 6,
   },
   categoryTextActive: {
-    color: 'white',
+    color: '#ffffff',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    color: '#94a3b8',
+    marginTop: 12,
+    fontSize: 14,
+  },
   assetsList: {
     padding: 15,
   },
   assetItem: {
     flex: 1,
-    margin: 5,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
+    margin: 6,
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
     alignItems: 'center',
-    minHeight: 120,
+    minHeight: 130,
     maxWidth: '30%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: '#e2e8f0',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   assetItemActive: {
-    borderColor: '#60a5fa',
-    backgroundColor: '#eff6ff',
+    borderColor: '#5BA3E0',
+    backgroundColor: 'rgba(91, 163, 224, 0.05)',
   },
   assetImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 5,
+    width: 65,
+    height: 65,
+    borderRadius: 33,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
   },
   assetName: {
     fontSize: 11,
-    color: '#1e3a8a',
+    color: '#1e293b',
     textAlign: 'center',
     fontWeight: '500',
   },
   equippedBadge: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#60a5fa',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 8,
+    right: 8,
+    backgroundColor: '#10b981',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   equippedText: {
-    color: 'white',
-    fontSize: 12,
+    color: '#ffffff',
+    fontSize: 14,
     fontWeight: 'bold',
   },
   emptyText: {
     textAlign: 'center',
     color: '#94a3b8',
-    marginTop: 40,
-    fontSize: 14,
+    marginTop: 50,
+    fontSize: 15,
   },
   actionContainer: {
     flexDirection: 'row',
     padding: 20,
-    gap: 10,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1.5,
     borderTopColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 4,
   },
   skipButton: {
     flex: 1,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
   },
   skipButtonText: {
     color: '#64748b',
@@ -437,14 +476,22 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 2,
-    paddingVertical: 15,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
-    backgroundColor: '#60a5fa',
+    backgroundColor: '#3b82f6',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CONFIG from '../config';
 
@@ -133,11 +134,12 @@ export default function CompleteProfileScreen({ navigation, route }) {
 
   return (
     <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
+      style={{ flex: 1, backgroundColor: '#f8fafc' }} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={{ flex: 1 }}>
-        <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
+        <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
+          <Ionicons name="person-circle" size={60} color="#ffffff" />
           <Text style={styles.title}>Complete Your Profile</Text>
           <Text style={styles.subtitle}>
             {userRole === 'doctor' ? 'Set up your professional profile' : 'Help us personalize your experience'}
@@ -145,76 +147,113 @@ export default function CompleteProfileScreen({ navigation, route }) {
         </LinearGradient>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Full Name *</Text>
-          <TextInput 
-            placeholder="Enter your full name" 
-            value={name} 
-            onChangeText={setName} 
-            style={styles.input}
-          />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>
+              <Ionicons name="person" size={16} color="#3b82f6" /> Full Name *
+            </Text>
+            <TextInput 
+              placeholder="Enter your full name" 
+              value={name} 
+              onChangeText={setName} 
+              style={styles.input}
+              placeholderTextColor="#94a3b8"
+            />
+          </View>
 
           {userRole === 'patient' ? (
             <>
-              <Text style={styles.label}>Age</Text>
-              <TextInput 
-                placeholder="Enter your age" 
-                value={age} 
-                onChangeText={setAge} 
-                style={styles.input}
-                keyboardType="numeric"
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="calendar" size={16} color="#3b82f6" /> Age
+                </Text>
+                <TextInput 
+                  placeholder="Enter your age" 
+                  value={age} 
+                  onChangeText={setAge} 
+                  style={styles.input}
+                  keyboardType="numeric"
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
 
-              <Text style={styles.label}>Medical History</Text>
-              <Text style={styles.hint}>Enter conditions separated by commas (e.g., Diabetes, Hypertension)</Text>
-              <TextInput 
-                placeholder="E.g., Diabetes, Hypertension, Asthma" 
-                value={medicalHistory} 
-                onChangeText={setMedicalHistory} 
-                style={[styles.input, styles.multiline]}
-                multiline
-                numberOfLines={3}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="medical" size={16} color="#3b82f6" /> Medical History
+                </Text>
+                <Text style={styles.hint}>Separate conditions with commas</Text>
+                <TextInput 
+                  placeholder="E.g., Diabetes, Hypertension, Asthma" 
+                  value={medicalHistory} 
+                  onChangeText={setMedicalHistory} 
+                  style={[styles.input, styles.multiline]}
+                  multiline
+                  numberOfLines={3}
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
 
-              <Text style={styles.label}>Allergies</Text>
-              <Text style={styles.hint}>Enter allergies separated by commas (e.g., Penicillin, Peanuts)</Text>
-              <TextInput 
-                placeholder="E.g., Penicillin, Peanuts, Dust" 
-                value={allergies} 
-                onChangeText={setAllergies} 
-                style={[styles.input, styles.multiline]}
-                multiline
-                numberOfLines={3}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="alert-circle" size={16} color="#3b82f6" /> Allergies
+                </Text>
+                <Text style={styles.hint}>Separate allergies with commas</Text>
+                <TextInput 
+                  placeholder="E.g., Penicillin, Peanuts, Dust" 
+                  value={allergies} 
+                  onChangeText={setAllergies} 
+                  style={[styles.input, styles.multiline]}
+                  multiline
+                  numberOfLines={3}
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
             </>
           ) : (
             <>
-              <Text style={styles.label}>Specialization *</Text>
-              <TextInput 
-                placeholder="E.g., Cardiology, Dermatology" 
-                value={specialization} 
-                onChangeText={setSpecialization} 
-                style={styles.input}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="medical" size={16} color="#3b82f6" /> Specialization *
+                </Text>
+                <TextInput 
+                  placeholder="E.g., Cardiology, Dermatology" 
+                  value={specialization} 
+                  onChangeText={setSpecialization} 
+                  style={styles.input}
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
 
-              <Text style={styles.label}>Years of Experience *</Text>
-              <TextInput 
-                placeholder="Enter years of experience" 
-                value={experienceYears} 
-                onChangeText={setExperienceYears} 
-                style={styles.input}
-                keyboardType="numeric"
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="time" size={16} color="#3b82f6" /> Years of Experience *
+                </Text>
+                <TextInput 
+                  placeholder="Enter years of experience" 
+                  value={experienceYears} 
+                  onChangeText={setExperienceYears} 
+                  style={styles.input}
+                  keyboardType="numeric"
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
 
-              <Text style={styles.label}>Consultation Fee *</Text>
-              <TextInput 
-                placeholder="Enter consultation fee (in USD)" 
-                value={consultationFee} 
-                onChangeText={setConsultationFee} 
-                style={styles.input}
-                keyboardType="decimal-pad"
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <Ionicons name="cash" size={16} color="#3b82f6" /> Consultation Fee *
+                </Text>
+                <TextInput 
+                  placeholder="Enter consultation fee (in USD)" 
+                  value={consultationFee} 
+                  onChangeText={setConsultationFee} 
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
 
-              <Text style={styles.hint}>Note: You can set your availability schedule later from your profile settings</Text>
+              <Text style={styles.hint}>
+                <Ionicons name="information-circle" size={14} color="#64748b" /> You can set availability later from settings
+              </Text>
             </>
           )}
 
@@ -224,17 +263,13 @@ export default function CompleteProfileScreen({ navigation, route }) {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#1e3a8a" />
+              <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={styles.buttonText}>Complete Profile</Text>
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                <Text style={styles.buttonText}>Complete Profile</Text>
+              </>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => {
-            // TODO: Navigate to home (skip for now)
-            Alert.alert('Note', 'You can complete your profile later from settings');
-          }}>
-            <Text style={styles.skip}>Skip for now</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -244,75 +279,83 @@ export default function CompleteProfileScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 60,
-    paddingBottom: 30,
+    paddingTop: 70,
+    paddingBottom: 35,
     alignItems: 'center',
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e3a8a',
-    marginBottom: 5,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginTop: 12,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   card: {
     margin: 20,
-    padding: 20,
-    backgroundColor: 'white',
+    padding: 24,
+    backgroundColor: '#ffffff',
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  inputGroup: {
+    marginBottom: 18,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1e3a8a',
-    marginBottom: 5,
-    marginTop: 10,
+    color: '#1e293b',
+    marginBottom: 8,
   },
   hint: {
     fontSize: 12,
     color: '#64748b',
-    marginBottom: 5,
-    fontStyle: 'italic',
+    marginBottom: 6,
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
     backgroundColor: '#f8fafc',
+    color: '#1e293b',
   },
   multiline: {
-    minHeight: 80,
+    minHeight: 90,
     textAlignVertical: 'top',
   },
   button: {
-    backgroundColor: '#60a5fa',
-    paddingVertical: 15,
-    borderRadius: 10,
+    backgroundColor: '#5BA3E0',
+    paddingVertical: 16,
+    borderRadius: 14,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonText: {
-    color: '#1e3a8a',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  skip: {
-    textAlign: 'center',
-    color: '#64748b',
-    marginTop: 15,
-    fontSize: 14,
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });

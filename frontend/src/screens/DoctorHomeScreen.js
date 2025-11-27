@@ -8,6 +8,7 @@ import VoiceChat from '../components/VoiceChat';
 import SideDrawer from '../components/SideDrawer';
 import NotificationBell from '../components/NotificationBell';
 import NotificationToast from '../components/NotificationToast';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DoctorHomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,7 @@ export default function DoctorHomeScreen({ navigation }) {
 
   async function handleLogout() {
     try {
+      setDrawerVisible(false);
       await AsyncStorage.multiRemove(['access_token', 'user_role', 'user_email']);
       navigation.navigate('Login');
     } catch (error) {
@@ -151,7 +153,7 @@ export default function DoctorHomeScreen({ navigation }) {
         }}
         customMenuItems={[
           {
-            icon: '📅',
+            icon: 'calendar-outline',
             label: 'Appointments',
             onPress: () => {
               setDrawerVisible(false);
@@ -159,7 +161,7 @@ export default function DoctorHomeScreen({ navigation }) {
             }
           },
           {
-            icon: '⏰',
+            icon: 'time-outline',
             label: 'Set Schedule',
             onPress: () => {
               setDrawerVisible(false);
@@ -167,7 +169,7 @@ export default function DoctorHomeScreen({ navigation }) {
             }
           },
           {
-            icon: '👤',
+            icon: 'person-circle-outline',
             label: 'Manage Avatar',
             onPress: () => {
               setDrawerVisible(false);
@@ -175,7 +177,7 @@ export default function DoctorHomeScreen({ navigation }) {
             }
           },
           {
-            icon: '✏️',
+            icon: 'create-outline',
             label: 'Edit Profile',
             onPress: () => {
               setDrawerVisible(false);
@@ -183,7 +185,7 @@ export default function DoctorHomeScreen({ navigation }) {
             }
           },
           {
-            icon: '🔬',
+            icon: 'search-outline',
             label: 'Scan Analysis',
             onPress: () => {
               setDrawerVisible(false);
@@ -194,52 +196,49 @@ export default function DoctorHomeScreen({ navigation }) {
         onLogout={handleLogout}
       />
       
-      <LinearGradient colors={["#e3f2fd", "#bbdefb"]} style={styles.header}>
+      {/* Modern Header */}
+      <LinearGradient colors={["#474E93", "#7E5CAD"]} style={styles.modernHeader}>
         <View style={styles.headerTop}>
           <TouchableOpacity 
             style={styles.hamburgerButton}
             onPress={() => setDrawerVisible(true)}
           >
-            <Text style={styles.hamburgerIcon}>☰</Text>
+            <Ionicons name="menu" size={28} color="#fff" />
           </TouchableOpacity>
-          
           <View style={styles.headerCenter}>
-            <Text style={styles.greeting}>Dr. {doctorName || 'Doctor'}</Text>
+            <Text style={styles.headerTitle}>Doctor Dashboard</Text>
+            <Text style={styles.headerSubtitle}>Welcome, Dr. {doctorName || 'Doctor'}</Text>
           </View>
-          
           <NotificationBell />
         </View>
       </LinearGradient>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('DoctorAppointments')}
-          >
-            <Text style={styles.actionIcon}>📅</Text>
-            <Text style={styles.actionTitle}>Appointments</Text>
-            <Text style={styles.actionSubtitle}>View & manage</Text>
-          </TouchableOpacity>
+        <View style={styles.quickActionsContainer}>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity 
+              style={[styles.modernActionCard, { backgroundColor: '#5BA3E0' }]}
+              onPress={() => navigation.navigate('DoctorAppointments')}
+            >
+                <View style={styles.iconCircle}>
+                  <Ionicons name="calendar-outline" size={28} color="#fff" />
+                </View>
+                <Text style={styles.actionTitle}>Manage Appointments</Text>
+                <Text style={styles.actionSubtitle}>View & manage</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('DoctorAvailability')}
-          >
-            <Text style={styles.actionIcon}>⏰</Text>
-            <Text style={styles.actionTitle}>Set Schedule</Text>
-            <Text style={styles.actionSubtitle}>Availability</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('ScanAnalysis')}
-          >
-            <Text style={styles.actionIcon}>🔬</Text>
-            <Text style={styles.actionTitle}>Scan Analysis</Text>
-            <Text style={styles.actionSubtitle}>Review scans</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modernActionCard, { backgroundColor: '#5BA3E0' }]}
+              onPress={() => navigation.navigate('DoctorAvailability')}
+            >
+                <View style={styles.iconCircle}>
+                  <Ionicons name="time-outline" size={28} color="#fff" />
+                </View>
+                <Text style={styles.actionTitle}>Set Schedule</Text>
+                <Text style={styles.actionSubtitle}>Availability</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar Section */}
@@ -299,10 +298,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748b',
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 20,
+  modernHeader: {
+    paddingTop: 48,
+    paddingBottom: 24,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#474E93',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   headerTop: {
     flexDirection: 'row',
@@ -312,18 +318,23 @@ const styles = StyleSheet.create({
   hamburgerButton: {
     padding: 10,
   },
-  hamburgerIcon: {
-    fontSize: 28,
-    color: '#1e3a8a',
-  },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
   },
-  greeting: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#1e3a8a',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    marginBottom: 2,
   },
   content: {
     flex: 1,
@@ -331,38 +342,57 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
   },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  quickActionsContainer: {
+    width: '100%',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  actionCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    gap: 16,
   },
-  actionIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+  modernActionCard: {
+    width: 160,
+    height: 170,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(71, 78, 147, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#474E93',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
   },
   actionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e3a8a',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
     textAlign: 'center',
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
   actionSubtitle: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+    textAlign: 'center',
   },
   avatarSection: {
     backgroundColor: '#fff',

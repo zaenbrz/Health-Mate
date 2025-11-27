@@ -11,6 +11,7 @@ import {
   Dimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,49 +31,69 @@ export default function ScanAnalysisScreen({ navigation }) {
   // Define organ configurations with their scan types and requirements
   const organConfigs = {
     brain: {
-      name: '🧠 Brain',
-      scanType: 'MRI (Magnetic Resonance Imaging)',
-      description: 'Advanced brain tumor detection and segmentation using dual-modality MRI analysis',
-      requirements: 'Requires 2 images: FLAIR and T1CE sequences',
+      name: 'Brain',
+      icon: 'brain',
+      iconFamily: 'MaterialCommunityIcons',
+      scanType: 'MRI Scan',
+      fullScanType: 'Magnetic Resonance Imaging',
+      description: 'Advanced brain tumor detection and segmentation',
+      requirements: 'Requires 2 images: FLAIR and T1CE',
       isDualImage: true,
-      color: '#8B5CF6',
-      details: 'Our AI analyzes brain MRI scans to detect and segment different tumor regions including enhancing tumor, edema, and necrotic core areas.'
+      color: '#7E5CAD',
+      bgColor: 'rgba(126, 92, 173, 0.1)',
+      gradientColors: ['#8B7FC4', '#7E5CAD', '#6B4E9A'],
     },
     liver: {
-      name: '🫀 Liver',
-      scanType: 'CT Scan (Computed Tomography)',
-      description: 'Liver lesion detection and analysis using CT imaging',
+      name: 'Liver',
+      icon: 'stomach',
+      iconFamily: 'MaterialCommunityIcons',
+      scanType: 'CT Scan',
+      fullScanType: 'Computed Tomography',
+      description: 'Liver lesion detection and analysis',
       requirements: 'Requires 1 CT scan image',
       isDualImage: false,
-      color: '#10B981',
-      details: 'AI-powered analysis of liver CT scans to identify abnormalities, lesions, and assess liver health.'
+      color: '#72BAA9',
+      bgColor: 'rgba(114, 186, 169, 0.1)',
+      gradientColors: ['#87C7B8', '#72BAA9', '#5FA393'],
     },
     kidney: {
-      name: '🫘 Kidney',
-      scanType: 'CT Scan (Computed Tomography)',
-      description: 'Kidney stone and abnormality detection using CT imaging',
+      name: 'Kidney',
+      icon: 'water-outline',
+      iconFamily: 'Ionicons',
+      scanType: 'CT Scan',
+      fullScanType: 'Computed Tomography',
+      description: 'Kidney stone and abnormality detection',
       requirements: 'Requires 1 CT scan image',
       isDualImage: false,
-      color: '#F59E0B',
-      details: 'Comprehensive kidney analysis using CT scans to detect stones, cysts, and other renal abnormalities.'
+      color: '#5BA3E0',
+      bgColor: 'rgba(91, 163, 224, 0.1)',
+      gradientColors: ['#78B5E8', '#5BA3E0', '#4A8DC7'],
     },
     pancreas: {
-      name: '🥞 Pancreas',
-      scanType: 'CT Scan (Computed Tomography)',
-      description: 'Pancreatic abnormality and lesion detection using CT imaging',
+      name: 'Pancreas',
+      icon: 'virus',
+      iconFamily: 'MaterialCommunityIcons',
+      scanType: 'CT Scan',
+      fullScanType: 'Computed Tomography',
+      description: 'Pancreatic abnormality detection',
       requirements: 'Requires 1 CT scan image',
       isDualImage: false,
-      color: '#EF4444',
-      details: 'Advanced pancreatic analysis using CT imaging to detect lesions, inflammation, and structural abnormalities.'
+      color: '#B08CB3',
+      bgColor: 'rgba(176, 140, 179, 0.1)',
+      gradientColors: ['#C4A5C7', '#B08CB3', '#9A7A9D'],
     },
     breast: {
-      name: '🤱 Breast',
-      scanType: 'Ultrasound Imaging',
-      description: 'Breast tissue analysis and abnormality detection using ultrasound',
+      name: 'Breast',
+      icon: 'human-female',
+      iconFamily: 'MaterialCommunityIcons',
+      scanType: 'Ultrasound',
+      fullScanType: 'Ultrasound Imaging',
+      description: 'Breast tissue analysis and detection',
       requirements: 'Requires 1 ultrasound image',
       isDualImage: false,
-      color: '#EC4899',
-      details: 'AI-assisted breast ultrasound analysis to identify masses, cysts, and tissue abnormalities with high accuracy.'
+      color: '#9896C4',
+      bgColor: 'rgba(152, 150, 196, 0.1)',
+      gradientColors: ['#ADA9D4', '#9896C4', '#8482B0'],
     }
   };
 
@@ -231,43 +252,87 @@ export default function ScanAnalysisScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <LinearGradient colors={['#60a5fa', '#3b82f6']} style={styles.header}>
+    <LinearGradient colors={["#e8eef9", "#d5dff5", "#e8eef9"]} style={styles.container}>
+      <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Scan Analysis</Text>
+        <View style={styles.headerContent}>
+          <Ionicons name="scan" size={32} color="#ffffff" />
+          <Text style={styles.title}>Medical Scan Analysis</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
         {/* Step 1: Organ Selection */}
         {!targetOrgan ? (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>🏥 Select Organ for Analysis</Text>
-              <Text style={styles.sectionDescription}>
-                Choose the organ you want to analyze. Each organ uses specialized AI models and imaging techniques for optimal results.
+            <View style={styles.introSection}>
+              <Text style={styles.introTitle}>Select Scan Type</Text>
+              <Text style={styles.introText}>
+                Choose the area you'd like to analyze with AI-powered diagnostics
               </Text>
             </View>
 
-            {/* Organ Selection Cards */}
-            <View style={styles.organGrid}>
+            {/* Modern Organ Cards */}
+            <View style={styles.organCardsContainer}>
               {Object.entries(organConfigs).map(([key, config]) => (
                 <TouchableOpacity 
                   key={key}
-                  style={[styles.organCard, { borderColor: config.color }]}
+                  style={styles.modernOrganCard}
                   onPress={() => setTargetOrgan(key)}
+                  activeOpacity={0.8}
                 >
-                  <View style={[styles.organIcon, { backgroundColor: config.color + '20' }]}>
-                    <Text style={styles.organEmoji}>{config.name.split(' ')[0]}</Text>
-                  </View>
-                  <Text style={styles.organName}>{config.name.split(' ').slice(1).join(' ')}</Text>
-                  <Text style={styles.organScanType}>{config.scanType}</Text>
-                  <Text style={styles.organDescription}>{config.description}</Text>
-                  <Text style={styles.organRequirements}>{config.requirements}</Text>
+                  <LinearGradient
+                    colors={config.gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.organCardGradient}
+                  >
+                    {/* Card Header */}
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardHeaderLeft}>
+                        <View style={styles.iconCircle}>
+                          {config.iconFamily === 'MaterialCommunityIcons' ? (
+                            <MaterialCommunityIcons name={config.icon} size={32} color="#ffffff" />
+                          ) : (
+                            <Ionicons name={config.icon} size={32} color="#ffffff" />
+                          )}
+                        </View>
+                        <View>
+                          <Text style={styles.cardTitle}>{config.name}</Text>
+                          <Text style={styles.cardSubtitle}>{config.scanType}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity style={styles.moreButton}>
+                        <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.8)" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Card Content */}
+                    <View style={styles.cardContent}>
+                      {/* Stats Row */}
+                      <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                          <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.9)" />
+                          <Text style={styles.statText}>1-3 min</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Ionicons name="sparkles-outline" size={16} color="rgba(255,255,255,0.9)" />
+                          <Text style={styles.statText}>AI Powered</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Decorative Elements */}
+                    <View style={styles.decorativeCircle1} />
+                    <View style={styles.decorativeCircle2} />
+                  </LinearGradient>
                 </TouchableOpacity>
               ))}
             </View>
@@ -275,7 +340,7 @@ export default function ScanAnalysisScreen({ navigation }) {
         ) : (
           <>
             {/* Step 2: Scan Upload for Selected Organ */}
-            <View style={styles.section}>
+            <View style={styles.content}>
               <TouchableOpacity 
                 style={styles.backToSelection}
                 onPress={() => {
@@ -286,24 +351,36 @@ export default function ScanAnalysisScreen({ navigation }) {
                   setAnalysisResult(null);
                 }}
               >
-                <Text style={styles.backText}>← Back to Organ Selection</Text>
+                <Ionicons name="arrow-back" size={20} color="#7E5CAD" />
+                <Text style={[styles.sectionDescription, { marginBottom: 0, marginLeft: 8, color: '#7E5CAD', fontWeight: '600' }]}>Back to Organ Selection</Text>
               </TouchableOpacity>
               
-              <View style={[styles.selectedOrganHeader, { backgroundColor: (getCurrentConfig()?.color || '#888') + '10' }]}>
-                <Text style={styles.selectedOrganTitle}>
-                  {getCurrentConfig()?.name || 'Unknown'} Analysis
-                </Text>
-                <Text style={styles.selectedOrganScanType}>
-                  {getCurrentConfig()?.scanType || 'Unknown Scan Type'}
-                </Text>
-                <Text style={styles.selectedOrganDetails}>
-                  {getCurrentConfig()?.details || 'No details available'}
-                </Text>
+              <View style={styles.selectedOrganHeader}>
+                <View style={styles.selectedOrganTop}>
+                  <View style={[styles.selectedOrganIconLarge, { backgroundColor: (getCurrentConfig()?.bgColor || '#f0f0f0') }]}>
+                    {getCurrentConfig()?.iconFamily === 'MaterialCommunityIcons' ? (
+                      <MaterialCommunityIcons name={getCurrentConfig()?.icon || 'medical-bag'} size={40} color={getCurrentConfig()?.color || '#888'} />
+                    ) : (
+                      <Ionicons name={getCurrentConfig()?.icon || 'scan'} size={40} color={getCurrentConfig()?.color || '#888'} />
+                    )}
+                  </View>
+                  <View style={styles.selectedOrganTitleContainer}>
+                    <Text style={styles.selectedOrganTitle}>
+                      {getCurrentConfig()?.name || 'Unknown'}
+                    </Text>
+                    <View style={styles.scanTypeBadge}>
+                      <Ionicons name="medical" size={14} color="#7E5CAD" />
+                      <Text style={styles.selectedOrganScanType}>
+                        {getCurrentConfig()?.scanType || 'Unknown Scan'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
                 <View style={styles.requirementsBadge}>
-                  <Text style={styles.requirementsText}>{getCurrentConfig()?.requirements || 'No requirements specified'}</Text>
+                  <Ionicons name="information-circle-outline" size={16} color="#474E93" />
+                  <Text style={styles.requirementsText}>{getCurrentConfig()?.requirements || 'No requirements'}</Text>
                 </View>
               </View>
-            </View>
 
             {!isDualImageRequired() ? (
               <>
@@ -318,8 +395,9 @@ export default function ScanAnalysisScreen({ navigation }) {
                       <Image source={{ uri: selectedImage.uri }} style={styles.uploadedImage} />
                     ) : (
                       <View style={styles.uploadPlaceholder}>
-                        <Text style={styles.uploadIcon}>📷+</Text>
-                        <Text style={styles.uploadText}>No image selected</Text>
+                        <Ionicons name="cloud-upload-outline" size={56} color="#9896C4" />
+                        <Text style={styles.uploadText}>Tap to upload scan</Text>
+                        <Text style={styles.uploadHint}>Select your medical scan image</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -327,7 +405,8 @@ export default function ScanAnalysisScreen({ navigation }) {
                     style={styles.uploadButton}
                     onPress={() => pickImage('single')}
                   >
-                    <Text style={styles.uploadButtonText}>📁 Upload Scan</Text>
+                    <Ionicons name="folder-open-outline" size={20} color="#ffffff" />
+                    <Text style={styles.uploadButtonText}>Choose Scan Image</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -347,9 +426,9 @@ export default function ScanAnalysisScreen({ navigation }) {
                   <Image source={{ uri: flairImage.uri }} style={styles.uploadedImage} />
                 ) : (
                   <View style={styles.uploadPlaceholder}>
-                    <Text style={styles.uploadIcon}>🧠</Text>
+                    <Ionicons name="cloud-upload-outline" size={56} color="#9896C4" />
                     <Text style={styles.uploadText}>Upload FLAIR Image</Text>
-                    <Text style={styles.uploadHint}>Tap to select FLAIR scan</Text>
+                    <Text style={styles.uploadHint}>Tap to select FLAIR MRI scan</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -368,9 +447,9 @@ export default function ScanAnalysisScreen({ navigation }) {
                   <Image source={{ uri: t1ceImage.uri }} style={styles.uploadedImage} />
                 ) : (
                   <View style={styles.uploadPlaceholder}>
-                    <Text style={styles.uploadIcon}>🧠</Text>
+                    <Ionicons name="cloud-upload-outline" size={56} color="#9896C4" />
                     <Text style={styles.uploadText}>Upload T1CE Image</Text>
-                    <Text style={styles.uploadHint}>Tap to select T1CE scan</Text>
+                    <Text style={styles.uploadHint}>Tap to select T1CE MRI scan</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -402,9 +481,12 @@ export default function ScanAnalysisScreen({ navigation }) {
           }
         >
           {loading ? (
-            <ActivityIndicator color="white" />
+            <ActivityIndicator color="white" size="large" />
           ) : (
-            <Text style={styles.analyzeButtonText}>Analyze Scan</Text>
+            <>
+              <Ionicons name="analytics" size={22} color="#ffffff" />
+              <Text style={styles.analyzeButtonText}>Analyze Scan</Text>
+            </>
           )}
         </TouchableOpacity>
 
@@ -487,313 +569,540 @@ export default function ScanAnalysisScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         )}
-        </>
+            </View>
+          </>
         )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
-    paddingTop: 50,
-    paddingBottom: 20,
+    paddingTop: 60,
+    paddingBottom: 25,
     paddingHorizontal: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
   backButton: {
-    marginRight: 15,
-  },
-  backText: {
-    fontSize: 24,
-    color: 'white',
-    fontWeight: 'bold',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#ffffff',
+  },
+  scrollContent: {
+    flex: 1,
   },
   content: {
     padding: 20,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 10,
-  },
-  modeContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modeButtonActive: {
-    backgroundColor: '#3b82f6',
-  },
-  modeText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  modeTextActive: {
-    color: 'white',
-  },
-  uploadArea: {
-    height: 200,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#d1d5db',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  uploadPlaceholder: {
-    alignItems: 'center',
-  },
-  uploadIcon: {
-    fontSize: 48,
-    marginBottom: 10,
-    opacity: 0.5,
-  },
-  uploadText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  uploadedImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
-  },
-  uploadButton: {
-    backgroundColor: '#3b82f6',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  uploadButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pickerContainer: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  picker: {
-    height: 50,
-  },
-  analyzeButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  analyzeButtonDisabled: {
-    backgroundColor: '#9ca3af',
-  },
-  analyzeButtonText: {
-    color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  resultsSection: {
-    marginTop: 30,
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  resultsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 15,
-  },
-  resultItem: {
-    marginBottom: 20,
-  },
-  resultLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  resultText: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  resultImage: {
-    width: width - 80,
-    height: 200,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-  },
-  resetButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 12,
-    borderRadius: 8,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-  },
-  resetButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 10,
-    lineHeight: 18,
-  },
-  uploadHint: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  infoBox: {
-    backgroundColor: '#f0f9ff',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e40af',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1e40af',
+    color: '#64748b',
+    marginBottom: 16,
     lineHeight: 20,
   },
-  // New organ selection styles
+  introSection: {
+    marginBottom: 28,
+    paddingHorizontal: 4,
+  },
+  introTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#474E93',
+    marginBottom: 10,
+    letterSpacing: -0.5,
+  },
+  introText: {
+    fontSize: 15,
+    color: '#64748b',
+    lineHeight: 22,
+  },
+  organList: {
+    marginBottom: 20,
+  },
+  organListItem: {
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  organListGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5BA3E0',
+  },
+  organListLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 16,
+  },
+  organIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  organInfo: {
+    flex: 1,
+  },
+  organListName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 4,
+  },
+  organListScanType: {
+    fontSize: 12,
+    color: '#7E5CAD',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 6,
+  },
+  organListDescription: {
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 18,
+  },
   organGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 15,
+    gap: 12,
   },
   organCard: {
     width: '48%',
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 15,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 12,
   },
   organIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     alignSelf: 'center',
   },
   organEmoji: {
-    fontSize: 28,
+    fontSize: 32,
   },
   organName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#474E93',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   organScanType: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: 11,
+    color: '#7E5CAD',
     textAlign: 'center',
     fontWeight: '600',
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
   organDescription: {
-    fontSize: 13,
-    color: '#374151',
+    fontSize: 12,
+    color: '#64748b',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 16,
     marginBottom: 8,
   },
   organRequirements: {
-    fontSize: 11,
-    color: '#9ca3af',
+    fontSize: 10,
+    color: '#94a3b8',
     textAlign: 'center',
     fontStyle: 'italic',
   },
   backToSelection: {
-    marginBottom: 15,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   selectedOrganHeader: {
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 20,
+    backgroundColor: '#ffffff',
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  selectedOrganTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 16,
+  },
+  selectedOrganIconLarge: {
+    width: 70,
+    height: 70,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedOrganTitleContainer: {
+    flex: 1,
   },
   selectedOrganTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#474E93',
+    marginBottom: 6,
+  },
+  scanTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f0f0ff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
   selectedOrganScanType: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '600',
-    marginBottom: 10,
+    fontSize: 12,
+    color: '#7E5CAD',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   selectedOrganDetails: {
     fontSize: 14,
-    color: '#374151',
+    color: '#64748b',
     lineHeight: 20,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   requirementsBadge: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
+    backgroundColor: '#e8f4f8',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#d0e8f0',
   },
   requirementsText: {
     fontSize: 12,
-    color: '#92400e',
+    color: '#474E93',
     fontWeight: '600',
+    flex: 1,
+  },
+  uploadArea: {
+    height: 220,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#9896C4',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  uploadPlaceholder: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  uploadIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  uploadText: {
+    fontSize: 16,
+    color: '#7E5CAD',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  uploadHint: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  uploadedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  uploadButton: {
+    backgroundColor: '#5BA3E0',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#5BA3E0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  uploadButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  analyzeButton: {
+    backgroundColor: '#5BA3E0',
+    paddingVertical: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 24,
+    marginBottom: 20,
+    shadowColor: '#5BA3E0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  analyzeButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowOpacity: 0.1,
+  },
+  analyzeButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  infoBox: {
+    backgroundColor: '#e8f4f8',
+    borderRadius: 14,
+    padding: 18,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5BA3E0',
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 22,
+  },
+  resultsSection: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+    marginBottom: 20,
+  },
+  resultsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 20,
+  },
+  resultItem: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#5BA3E0',
+  },
+  resultLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#474E93',
+    marginBottom: 12,
+  },
+  resultText: {
+    fontSize: 14,
+    color: '#64748b',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  resultImage: {
+    width: width - 92,
+    height: 220,
+    backgroundColor: '#e8eef9',
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  resetButton: {
+    backgroundColor: '#7E5CAD',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    shadowColor: '#7E5CAD',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  resetButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  // Modern Card Design Styles (Inspired by UI reference)
+  organCardsContainer: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  modernOrganCard: {
+    height: 180,
+    borderRadius: 24,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  organCardGradient: {
+    flex: 1,
+    padding: 20,
+    position: 'relative',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  moreButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginBottom: 2,
+    letterSpacing: -0.5,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 'auto',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statText: {
+    fontSize: 12,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  decorativeCircle1: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    top: -40,
+    right: -30,
+  },
+  decorativeCircle2: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    bottom: -20,
+    right: 60,
   },
 });
