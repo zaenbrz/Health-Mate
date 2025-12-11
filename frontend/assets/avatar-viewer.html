@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Avatar Viewer</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
-    #canvas-container { width: 100%; height: 100%; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
+
 <body>
   <div id="canvas-container"></div>
 
   <!-- Load Three.js from CDN (non-module version for better compatibility) -->
-    <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://unpkg.com/fflate@0.7.4/umd/index.js"></script>
-    <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/FBXLoader.js"></script>
-    <script src="https://unpkg.com/three@0.136.0/examples/js/controls/OrbitControls.js"></script>  <script>
+  <script src="https://unpkg.com/three@0.136.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/fflate@0.7.4/umd/index.js"></script>
+  <script src="https://unpkg.com/three@0.136.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://unpkg.com/three@0.136.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
     // Immediate message on script start
-    (function() {
+    (function () {
       try {
         if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ 
-            type: 'console', 
-            level: 'log', 
-            message: '🚀 Script execution started' 
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'console',
+            level: 'log',
+            message: '🚀 Script execution started'
           }));
         }
       } catch (e) {
@@ -70,12 +87,12 @@
     }
 
     // Check if Three.js loaded (diagnostics only, don't init here)
-    window.addEventListener('load', function() {
+    window.addEventListener('load', function () {
       sendMessage({ type: 'console', level: 'log', message: '📦 Window loaded. THREE available: ' + (typeof THREE !== 'undefined') });
       sendMessage({ type: 'console', level: 'log', message: '🎮 GLTFLoader available: ' + (typeof THREE !== 'undefined' && typeof THREE.GLTFLoader !== 'undefined') });
       sendMessage({ type: 'console', level: 'log', message: '🎮 OrbitControls (THREE.OrbitControls): ' + (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') });
       sendMessage({ type: 'console', level: 'log', message: '🎮 OrbitControls (global): ' + (typeof OrbitControls !== 'undefined') });
-      
+
       if (typeof THREE === 'undefined') {
         sendMessage({ type: 'error', message: 'Three.js failed to load from CDN' });
       }
@@ -84,14 +101,14 @@
     function init() {
       try {
         sendMessage({ type: 'console', level: 'log', message: '🔧 Starting init...' });
-        
+
         // Scene
         scene = new THREE.Scene();
         scene.background = null; // transparent
 
         // Camera - positioned to focus on head/face
         camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1.2, 2.3);
+        camera.position.set(0, 2.0, 1.8);
 
         // Renderer
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
@@ -110,14 +127,14 @@
         console.log('Lights added');
 
         // Controls - try multiple ways to access OrbitControls
-        const ControlsCtor = (typeof THREE !== 'undefined' && THREE.OrbitControls) 
-          ? THREE.OrbitControls 
+        const ControlsCtor = (typeof THREE !== 'undefined' && THREE.OrbitControls)
+          ? THREE.OrbitControls
           : (typeof OrbitControls !== 'undefined' ? OrbitControls : null);
-        
+
         if (ControlsCtor) {
           controls = new ControlsCtor(camera, renderer.domElement);
           controls.enableDamping = true;
-          controls.target.set(0, 1.3, 0); // Target slightly higher to focus on upper body/head
+          controls.target.set(0, 1.2, 0); // Target slightly higher to focus on upper body/head
           controls.update();
           console.log('Controls set up');
         } else {
@@ -196,23 +213,23 @@
     // Modify animate loop to force skeleton update
     function animate() {
       requestAnimationFrame(animate);
-      
+
       const delta = clock.getDelta();
-      
+
       // Update animation mixer
       if (mixer) {
         mixer.update(delta);
       }
-      
+
       // Update visemes for lip-sync (priority over audio analysis)
       updateVisemes();
-      
+
       // Audio analysis lip-sync (only if no viseme schedule)
       if (visemeSchedule.length === 0) {
         if (analyser && mouthMesh && morphIndex !== null) {
           const dataArray = new Uint8Array(analyser.fftSize);
           analyser.getByteTimeDomainData(dataArray);
-          
+
           // Calculate RMS amplitude
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) {
@@ -221,7 +238,7 @@
           }
           const rms = Math.sqrt(sum / dataArray.length);
           const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
-          
+
           // Apply to morph target
           if (mouthMesh.morphTargetInfluences) {
             mouthMesh.morphTargetInfluences[morphIndex] = value;
@@ -230,7 +247,7 @@
           // Fallback: animate jaw bone
           const dataArray = new Uint8Array(analyser.fftSize);
           analyser.getByteTimeDomainData(dataArray);
-          
+
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) {
             const v = (dataArray[i] - 128) / 128;
@@ -238,7 +255,7 @@
           }
           const rms = Math.sqrt(sum / dataArray.length);
           const value = Math.min(1, Math.max(0, (rms - 0.02) * 6));
-          
+
           jawBone.rotation.x = -value * 0.35;
         }
       }
@@ -318,28 +335,28 @@
       if (!avatarModel) return;
 
       console.log('🧍 Applying natural standing pose...');
-      
+
       avatarModel.traverse((child) => {
         if (child.isBone) {
           const name = child.name;
-          
+
           // Very subtle arm lowering - just bring arms down slightly
           if (name === 'LeftArm') {
             child.rotation.z = 0.15; // Very small rotation inward
           }
-          
+
           if (name === 'RightArm') {
             child.rotation.z = -0.15; // Very small rotation inward
           }
         }
       });
-      
+
       console.log('✅ Natural pose applied');
     }
 
     function loadAvatar(url) {
       console.log('Loading avatar from URL:', url);
-      
+
       // Validate URL
       if (!url || typeof url !== 'string') {
         console.error('Invalid avatar URL:', url);
@@ -348,56 +365,56 @@
       }
 
       // Add morphTargets parameter for Ready Player Me to get visemes
-      const corsUrl = url.includes('?') 
-        ? `${url}&morphTargets=Oculus Visemes` 
+      const corsUrl = url.includes('?')
+        ? `${url}&morphTargets=Oculus Visemes`
         : `${url}?morphTargets=Oculus Visemes`;
       console.log('Loading with visemes URL:', corsUrl);
 
       const loader = new THREE.GLTFLoader();
-      
+
       // Set crossOrigin for textures
       loader.setCrossOrigin('anonymous');
-      
+
       loader.load(
         corsUrl,
         (gltf) => {
           console.log('✓ Avatar loaded successfully');
-          
+
           // Remove old model if exists
           if (avatarContainer) {
             scene.remove(avatarContainer);
           }
 
           avatarModel = gltf.scene;
-          
+
           // Create a container to lock position/rotation while allowing skeleton to animate
           avatarContainer = new THREE.Group();
           avatarContainer.add(avatarModel);
           scene.add(avatarContainer);
-          
+
           // Center and scale the avatar
           const box = new THREE.Box3().setFromObject(avatarModel);
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
-          
+
           console.log('Avatar bounds:', { center, size });
-          
+
           // Center the avatar container
           avatarContainer.position.sub(center);
           avatarContainer.position.y += size.y / 2;
-          
+
           // Save container's original transform
           containerOriginalPosition.copy(avatarContainer.position);
           containerOriginalRotation.copy(avatarContainer.rotation);
-          
+
           // Save world position of the avatar
           avatarModel.getWorldPosition(avatarWorldPosition);
-          
+
           // Save avatar's local transform for animation locking
           savedAvatarPosition.copy(avatarModel.position);
           savedAvatarRotation.copy(avatarModel.rotation);
           savedAvatarScale.copy(avatarModel.scale);
-          
+
           console.log('✓ Avatar positioned and added to scene');
           console.log('✓ Container transform saved:', containerOriginalPosition);
           console.log('✓ Avatar world position saved:', avatarWorldPosition);
@@ -417,14 +434,14 @@
             if (!foundMorph && child.isMesh && child.morphTargetInfluences && child.morphTargetInfluences.length > 0) {
               mouthMesh = child;
               const dict = child.morphTargetDictionary || {};
-              
+
               console.log('Selected morph mesh:', child.name, 'with targets:', Object.keys(dict));
 
               // Try to find a mouth-related morph (expanded list for RPM avatars)
               const mouthMorphs = [
                 // Standard visemes
                 'viseme_aa', 'viseme_AA', 'visemeAA',
-                'viseme_O', 'viseme_o', 'visemeO', 
+                'viseme_O', 'viseme_o', 'visemeO',
                 'viseme_I', 'viseme_i', 'visemeI',
                 'viseme_E', 'viseme_e', 'visemeE',
                 'viseme_U', 'viseme_u', 'visemeU',
@@ -432,7 +449,7 @@
                 'mouthOpen', 'jawOpen', 'mouthSmile',
                 'mouthFunnel', 'mouthPucker', 'mouthRollLower', 'mouthRollUpper'
               ];
-              
+
               for (const morphName of mouthMorphs) {
                 if (dict[morphName] !== undefined) {
                   morphIndex = dict[morphName];
@@ -463,17 +480,17 @@
                 mixerRoot = rootBone;
                 console.log('✓ Found skeleton root for animations:', rootBone.name);
               }
-              
+
               for (const bone of child.skeleton.bones) {
                 const name = bone.name.toLowerCase();
-                
+
                 // Find Hips bone to lock position
                 if (!hipsBone && name.includes('hips')) {
                   hipsBone = bone;
                   hipsOriginalPosition.copy(bone.position);
                   console.log('✓ Found Hips bone:', bone.name, 'original position:', hipsOriginalPosition);
                 }
-                
+
                 if (name.includes('jaw') || name.includes('mandible')) {
                   jawBone = bone;
                   console.log('✓ Found jaw bone:', bone.name);
@@ -518,7 +535,7 @@
     // Animation functions
     function loadAnimation(animationUrl) {
       console.log('Loading animation from URL:', animationUrl);
-      
+
       if (!avatarModel) {
         console.error('Cannot load animation: no avatar loaded');
         sendMessage({ type: 'error', message: 'No avatar loaded' });
@@ -528,16 +545,16 @@
       // Determine loader based on file extension
       const isFBX = animationUrl.toLowerCase().endsWith('.fbx');
       const loader = isFBX ? new THREE.FBXLoader() : new THREE.GLTFLoader();
-      
+
       console.log('Using loader:', isFBX ? 'FBXLoader' : 'GLTFLoader');
 
       loader.load(
         animationUrl,
         (loadedData) => {
           console.log('✓ Animation loaded successfully');
-          
+
           let loadedAnimations;
-          
+
           if (isFBX) {
             // FBX loader returns the object directly with animations attached
             if (!loadedData.animations || loadedData.animations.length === 0) {
@@ -556,25 +573,30 @@
             loadedAnimations = loadedData.animations;
           }
 
-          // Store animations
-          animations = loadedAnimations;
+          // Append animations instead of replacing (to support multiple animation files)
+          loadedAnimations.forEach(anim => {
+            animations.push(anim);
+          });
+
           console.log('=== ANIMATION LOADED ===');
-          console.log('Found animations:', animations.map(a => a.name));
-          
-          // Log all animation tracks for debugging
-          animations.forEach((anim, idx) => {
-            console.log(`Animation ${idx}: "${anim.name}"`);
+          console.log('📦 Total animations now:', animations.length);
+          console.log('📦 All animations:', animations.map((a, i) => `[${i}] ${a.name}`).join(', '));
+
+          // Log the newly loaded animation(s)
+          loadedAnimations.forEach((anim) => {
+            const globalIdx = animations.indexOf(anim);
+            console.log(`📦 Animation [${globalIdx}]: "${anim.name}"`);
             console.log(`  Total tracks: ${anim.tracks.length}`);
             const trackNames = anim.tracks.map(t => t.name.split('.')[0]);
             const uniqueTracks = [...new Set(trackNames)];
             console.log(`  Unique bone targets: ${uniqueTracks.join(', ')}`);
-            sendMessage({ 
-              type: 'console', 
-              level: 'log', 
-              message: `🎬 Animation "${anim.name}" has ${anim.tracks.length} tracks targeting: ${uniqueTracks.slice(0, 5).join(', ')}${uniqueTracks.length > 5 ? '...' : ''}` 
+            sendMessage({
+              type: 'console',
+              level: 'log',
+              message: `🎬 Animation [${globalIdx}] "${anim.name}" loaded with ${anim.tracks.length} tracks`
             });
           });
-          
+
           // Create mixer if it doesn't exist
           if (!mixer) {
             // Use armature if found, otherwise fall back to avatar model
@@ -583,9 +605,9 @@
             console.log('✓ AnimationMixer created with target:', target.name || target.type);
           }
 
-          sendMessage({ 
-            type: 'animationLoaded', 
-            success: true, 
+          sendMessage({
+            type: 'animationLoaded',
+            success: true,
             animations: animations.map(a => a.name)
           });
         },
@@ -629,19 +651,19 @@
 
       console.log(`✅ Matched tracks (${matched.length}):`, [...new Set(matched)].join(', '));
       console.log(`❌ Mismatched tracks (${mismatched.length}):`, [...new Set(mismatched)].join(', '));
-      
-      sendMessage({ 
-        type: 'console', 
-        level: 'warn', 
-        message: `⚠️ Track analysis: ${matched.length} matched, ${mismatched.length} mismatched out of ${animation.tracks.length} total tracks` 
+
+      sendMessage({
+        type: 'console',
+        level: 'warn',
+        message: `⚠️ Track analysis: ${matched.length} matched, ${mismatched.length} mismatched out of ${animation.tracks.length} total tracks`
       });
 
       if (mismatched.length > 0) {
         const uniqueMismatched = [...new Set(mismatched)];
-        sendMessage({ 
-          type: 'console', 
-          level: 'error', 
-          message: `❌ Mismatched bone names: ${uniqueMismatched.slice(0, 10).join(', ')}${uniqueMismatched.length > 10 ? '...' : ''}` 
+        sendMessage({
+          type: 'console',
+          level: 'error',
+          message: `❌ Mismatched bone names: ${uniqueMismatched.slice(0, 10).join(', ')}${uniqueMismatched.length > 10 ? '...' : ''}`
         });
       }
     }
@@ -654,7 +676,7 @@
       }
 
       console.log('=== RETARGETING ANIMATION ===');
-      
+
       // Build bone name mapping - handles both "mixamorig:" and "mixamorig" prefixes
       const boneMap = {
         // WITH colon (mixamorig:)
@@ -711,7 +733,7 @@
         'mixamorig:RightHandPinky1': 'RightHandPinky1',
         'mixamorig:RightHandPinky2': 'RightHandPinky2',
         'mixamorig:RightHandPinky3': 'RightHandPinky3',
-        
+
         // WITHOUT colon (mixamorigBoneName) - as seen in your logs
         'mixamorigHips': 'Hips',
         'mixamorigSpine': 'Spine',
@@ -766,7 +788,7 @@
         'mixamorigRightHandPinky1': 'RightHandPinky1',
         'mixamorigRightHandPinky2': 'RightHandPinky2',
         'mixamorigRightHandPinky3': 'RightHandPinky3',
-        
+
         // Extra finger bones (4th segments) - map to RPM equivalents
         'mixamorigLeftHandThumb4': 'LeftHandThumb4',
         'mixamorigLeftHandIndex4': 'LeftHandIndex4',
@@ -778,7 +800,7 @@
         'mixamorigRightHandMiddle4': 'RightHandMiddle4',
         'mixamorigRightHandRing4': 'RightHandRing4',
         'mixamorigRightHandPinky4': 'RightHandPinky4',
-        
+
         // Toe end bones
         'mixamorigLeftToe_End': 'LeftToe_End',
         'mixamorigRightToe_End': 'RightToe_End',
@@ -831,7 +853,7 @@
           // Try case-insensitive match
           const lowerBoneName = mappedBoneName.toLowerCase();
           const match = avatarBones.find(b => b.toLowerCase() === lowerBoneName);
-          
+
           if (match) {
             const newTrackName = `${match}.${property}`;
             const TrackType = track.constructor;
@@ -846,10 +868,10 @@
       });
 
       console.log(`Retargeting complete: ${mappedCount} tracks mapped, ${unmappedCount} tracks unmapped`);
-      sendMessage({ 
-        type: 'console', 
-        level: 'log', 
-        message: `🔄 Retargeted animation: ${mappedCount}/${animation.tracks.length} tracks mapped successfully` 
+      sendMessage({
+        type: 'console',
+        level: 'log',
+        message: `🔄 Retargeted animation: ${mappedCount}/${animation.tracks.length} tracks mapped successfully`
       });
 
       // Create new animation clip with retargeted tracks
@@ -858,23 +880,37 @@
     }
 
     // Temporarily disable track filtering for testing
-    function playAnimation(animationName, loop = true, fadeDuration = 0.5) {
+    function playAnimation(animationNameOrIndex, loop = true, fadeDuration = 0.5) {
       if (!mixer || animations.length === 0) {
         console.error('No animations loaded');
         return;
       }
 
-      const animation = animationName 
-        ? animations.find(a => a.name === animationName)
-        : animations[0];
+      let animation;
+
+      // Support both index (number) and name (string)
+      if (typeof animationNameOrIndex === 'number') {
+        // Use index
+        animation = animations[animationNameOrIndex];
+        console.log(`🎬 Playing animation by index: ${animationNameOrIndex}`);
+      } else if (typeof animationNameOrIndex === 'string') {
+        // Use name
+        animation = animations.find(a => a.name === animationNameOrIndex);
+        console.log(`🎬 Playing animation by name: ${animationNameOrIndex}`);
+      } else {
+        // Default to first animation
+        animation = animations[0];
+        console.log('🎬 Playing default animation (first)');
+      }
 
       if (!animation) {
-        console.error('Animation not found:', animationName);
+        console.error('❌ Animation not found:', animationNameOrIndex, 'Available:', animations.length);
         return;
       }
 
       console.log('=== PLAYING ANIMATION ===');
       console.log('Animation name:', animation.name);
+      console.log('Animation index:', animations.indexOf(animation));
 
       // Compare animation tracks with skeleton bones
       compareTracksWithBones(animation);
@@ -907,7 +943,7 @@
           currentAnimation = null;
           isAnimationPlaying = false;
         }, fadeDuration * 1000);
-        
+
         sendMessage({ type: 'animationStopped' });
       }
     }
@@ -932,7 +968,7 @@
         .then(audioBuffer => {
           // Stop previous audio if playing
           if (audioSource) {
-            try { audioSource.stop(); } catch (e) {}
+            try { audioSource.stop(); } catch (e) { }
           }
 
           // Create new source
@@ -1016,10 +1052,10 @@
         .then(audioBuffer => {
           // Stop previous audio if playing
           if (audioSource) {
-            try { 
-              audioSource.stop(); 
+            try {
+              audioSource.stop();
               audioSource.disconnect();
-            } catch (e) {}
+            } catch (e) { }
           }
 
           // Create new source
@@ -1160,7 +1196,7 @@
     }
 
     // Expose test function for debugging visemes
-    window.testViseme = function(visemeName = 'viseme_aa', duration = 1000) {
+    window.testViseme = function (visemeName = 'viseme_aa', duration = 1000) {
       console.log('🧪 Testing viseme:', visemeName);
       applyViseme(visemeName);
       setTimeout(() => {
@@ -1171,13 +1207,13 @@
 
     function testMorph(strength = 1, duration = 800) {
       console.log('TEST MORPH called with strength:', strength, 'duration:', duration);
-      
+
       if (mouthMesh && morphIndex !== null) {
         console.log('Applying morph to index:', morphIndex, 'on mesh:', mouthMesh.name);
         const clampedIndex = Math.min(mouthMesh.morphTargetInfluences.length - 1, Math.max(0, morphIndex));
         mouthMesh.morphTargetInfluences[clampedIndex] = strength;
         console.log('Morph applied. Current value:', mouthMesh.morphTargetInfluences[clampedIndex]);
-        
+
         setTimeout(() => {
           if (mouthMesh && mouthMesh.morphTargetInfluences) {
             mouthMesh.morphTargetInfluences[clampedIndex] = 0;
@@ -1246,7 +1282,7 @@
           break;
         case 'stopAudio':
           if (audioSource) {
-            try { audioSource.stop(); } catch (e) {}
+            try { audioSource.stop(); } catch (e) { }
             audioSource = null;
             analyser = null;
           }
@@ -1266,4 +1302,5 @@
     });
   </script>
 </body>
+
 </html>

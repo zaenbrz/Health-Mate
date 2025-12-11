@@ -82,7 +82,7 @@ const PatientAppointmentsScreen = ({ navigation }) => {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Fetch doctor details for each appointment
         const appointmentsWithDoctorDetails = await Promise.all(
           data.map(async (appointment) => {
@@ -93,11 +93,11 @@ const PatientAppointmentsScreen = ({ navigation }) => {
                   'Content-Type': 'application/json'
                 }
               });
-              
+
               if (doctorResponse.ok) {
                 const allDoctors = await doctorResponse.json();
                 const doctor = allDoctors.find(d => d.email === appointment.doctor_email);
-                
+
                 if (doctor) {
                   return {
                     ...appointment,
@@ -111,7 +111,7 @@ const PatientAppointmentsScreen = ({ navigation }) => {
             return appointment;
           })
         );
-        
+
         setMyAppointments(appointmentsWithDoctorDetails);
       } else {
         Alert.alert('Error', 'Failed to fetch appointments');
@@ -160,11 +160,11 @@ const PatientAppointmentsScreen = ({ navigation }) => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -176,7 +176,6 @@ const PatientAppointmentsScreen = ({ navigation }) => {
 
   const renderDoctorCard = (doctor) => (
     <TouchableOpacity
-      key={doctor.email}
       style={styles.doctorCard}
       onPress={() => handleDoctorPress(doctor)}
       activeOpacity={0.7}
@@ -239,8 +238,8 @@ const PatientAppointmentsScreen = ({ navigation }) => {
           colors={['#5BA3E0', '#4A8FCC']}
           style={styles.bookButton}
         >
-          <TouchableOpacity 
-            style={styles.bookButtonInner} 
+          <TouchableOpacity
+            style={styles.bookButtonInner}
             onPress={() => handleDoctorPress(doctor)}
             activeOpacity={0.8}
           >
@@ -253,7 +252,7 @@ const PatientAppointmentsScreen = ({ navigation }) => {
   );
 
   const renderAppointmentCard = (appointment) => (
-    <View key={appointment._id} style={styles.appointmentCard}>
+    <View style={styles.appointmentCard}>
       <View style={styles.appointmentHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.appointmentDoctor}>
@@ -265,7 +264,7 @@ const PatientAppointmentsScreen = ({ navigation }) => {
           <Text style={styles.statusText}>{appointment.status?.toUpperCase()}</Text>
         </View>
       </View>
-      
+
       <View style={styles.appointmentDetails}>
         <View style={styles.detailRow}>
           <Ionicons name="calendar-outline" size={18} color="#5BA3E0" />
@@ -400,8 +399,10 @@ const PatientAppointmentsScreen = ({ navigation }) => {
           >
             {activeTab === 'book' ? (
               filteredDoctors.length > 0 ? (
-                filteredDoctors.map((doctor) => (
-                  renderDoctorCard(doctor)
+                filteredDoctors.map((doctor, index) => (
+                  <View key={doctor._id || index}>
+                    {renderDoctorCard(doctor)}
+                  </View>
                 ))
               ) : (
                 <View style={styles.emptyContainer}>
@@ -413,8 +414,10 @@ const PatientAppointmentsScreen = ({ navigation }) => {
               )
             ) : (
               myAppointments.length > 0 ? (
-                myAppointments.map((appointment) => (
-                  renderAppointmentCard(appointment)
+                myAppointments.map((appointment, index) => (
+                  <View key={appointment._id || index}>
+                    {renderAppointmentCard(appointment)}
+                  </View>
                 ))
               ) : (
                 <View style={styles.emptyContainer}>

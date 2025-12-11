@@ -10,7 +10,7 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [permissionResponse, requestPermission] = Audio.usePermissions();
-  
+
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -75,7 +75,7 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       wave1Anim.setValue(0);
       wave2Anim.setValue(0);
       wave3Anim.setValue(0);
-      
+
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -135,17 +135,17 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       });
 
       console.log('Starting recording...');
-      
-      // Play yes-nod animation while recording (index 1, already preloaded)
+
+      // Play yes-nod animation while recording (index 1)
       if (avatarViewerRef?.current) {
-        console.log('🎬 Playing yes-nod animation (loop)');
+        console.log('🎬 Playing yes-nod animation (loop) while recording');
         avatarViewerRef.current.playAnimation(1, true, 0.3);
       }
-      
+
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
-      
+
       setRecording(recording);
       setIsRecording(true);
       console.log('Recording started');
@@ -166,13 +166,13 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
-      
+
       const uri = recording.getURI();
       console.log('Recording stopped, stored at:', uri);
-      
+
       // Process the recording
       await processVoiceInput(uri);
-      
+
       setRecording(null);
     } catch (error) {
       console.error('Error stopping recording:', error);
@@ -215,13 +215,18 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
 
       // Step 2: Get AI response
       console.log('🤖 Getting AI response...');
-      
-      // Play thinking animation while AI generates response (index 2, already preloaded)
+
+      // Play thoughtful animation while AI generates response (index 2)
       if (avatarViewerRef?.current) {
-        console.log('🤔 Playing thinking animation (loop)');
+        console.log('🤔 Playing thoughtful animation (loop) while thinking');
         avatarViewerRef.current.playAnimation(2, true, 0.3);
       }
-      
+
+      // Show "Thinking..." state instead of immediate response
+      if (onResponse) {
+        onResponse("Thinking...");
+      }
+
       const chatResponse = await fetch(`${CONFIG.API_URL}/chat`, {
         method: 'POST',
         headers: {
@@ -239,10 +244,7 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       const aiMessage = chatData.response;
       console.log('✅ AI Response:', aiMessage);
 
-      // Send response to parent component (display on screen)
-      if (onResponse) {
-        onResponse(aiMessage);
-      }
+      // Don't show full response yet - wait for speech
 
       // Step 3: Generate speech with lip-sync (don't fail if this errors)
       try {
@@ -253,43 +255,45 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             text: aiMessage,
-            language: selectedLanguage 
+            language: selectedLanguage
           }),
         });
 
         if (!lipsyncResponse.ok) {
-          console.error('⚠️ Lip-sync generation failed, but AI response is already shown');
-          return; // Don't throw error, AI response is already displayed
+          console.error('⚠️ Lip-sync generation failed');
+          // Fallback: show full text immediately if audio fails
+          if (onResponse) onResponse(aiMessage);
+          return;
         }
 
         const lipsyncData = await lipsyncResponse.json();
-        console.log('✅ Lip-sync data received:', lipsyncData);
-        console.log('📊 Visemes array:', lipsyncData.visemes);
-        console.log('📊 Visemes length:', lipsyncData.visemes ? lipsyncData.visemes.length : 0);
-        console.log('📊 First 5 visemes:', lipsyncData.visemes ? lipsyncData.visemes.slice(0, 5) : 'none');
+        console.log('✅ Lip-sync data received');
 
         // Step 4: Play audio and animate avatar
         if (avatarViewerRef?.current) {
           const audioUrl = `${CONFIG.API_URL}${lipsyncData.audio_url}`;
           console.log('🔊 Playing audio with lip-sync:', audioUrl);
-          console.log('🔊 Passing visemes to avatar:', lipsyncData.visemes);
-          
-          // Play thoughtful animation during lip-sync (index 3, already preloaded)
-          console.log('💭 Playing thoughtful animation');
+
+          // Play normal animation while speaking (index 3 = normal.fbx)
+          console.log('🗣️ Playing normal animation while speaking');
           avatarViewerRef.current.playAnimation(3, true, 0.3);
-          
+
           // Start lip-sync audio immediately
           setTimeout(() => {
             avatarViewerRef.current.playAudioWithLipsync(audioUrl, lipsyncData.visemes);
+
+            // Start Subtitles
+            playSubtitles(aiMessage);
           }, 200);
         } else {
           console.warn('⚠️ Avatar viewer ref not available');
+          if (onResponse) onResponse(aiMessage);
         }
       } catch (lipsyncError) {
-        console.error('⚠️ Lip-sync failed, but AI response is already shown:', lipsyncError);
-        // Don't overwrite the AI response - it's already displayed
+        console.error('⚠️ Lip-sync failed:', lipsyncError);
+        if (onResponse) onResponse(aiMessage);
       }
 
     } catch (error) {
@@ -301,6 +305,39 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
       setIsProcessing(false);
     }
   }
+
+  // Helper function to play subtitles sentence by sentence
+  const playSubtitles = (text) => {
+    if (!onResponse) return;
+
+    // Split text into sentences (keeping punctuation)
+    // Matches: (any chars except .!?)+(one or more .!? or end of string)
+    const sentences = text.match(/[^.!?]+([.!?]+|$)/g) || [text];
+
+    let currentSentenceIndex = 0;
+
+    const showNextSentence = () => {
+      if (currentSentenceIndex >= sentences.length) {
+        // Finished - show full text or keep last sentence?
+        // Let's show the full text at the end so user can read everything
+        // onResponse(text); 
+        return;
+      }
+
+      const sentence = sentences[currentSentenceIndex].trim();
+      onResponse(sentence);
+
+      // Calculate duration based on word count
+      const wordCount = sentence.split(/\s+/).length;
+      // Assume ~300ms per word + 500ms base
+      const duration = Math.max(1500, wordCount * 300 + 500);
+
+      currentSentenceIndex++;
+      setTimeout(showNextSentence, duration);
+    };
+
+    showNextSentence();
+  };
 
   async function handleMicPress() {
     if (isRecording) {
@@ -395,23 +432,23 @@ export default function VoiceChat({ selectedLanguage, onResponse, onProcessingCh
         >
           {/* Gradient overlay for depth */}
           <View style={styles.buttonGradientOverlay} />
-          
+
           <View style={styles.buttonInner}>
             {isProcessing ? (
               <View style={styles.processingContainer}>
                 <ActivityIndicator size="large" color="#fff" />
               </View>
             ) : (
-              <Ionicons 
-                name={isRecording ? "stop-circle" : "mic"} 
-                size={isRecording ? 40 : 36} 
-                color="#fff" 
+              <Ionicons
+                name={isRecording ? "stop-circle" : "mic"}
+                size={isRecording ? 40 : 36}
+                color="#fff"
               />
             )}
           </View>
         </TouchableOpacity>
       </Animated.View>
-      
+
       {/* Status text */}
       {isRecording && (
         <View style={styles.statusContainer}>

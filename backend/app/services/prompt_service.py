@@ -2,31 +2,24 @@ from typing import List, Dict
 
 class MedicalPromptEngine:
     def __init__(self):
-        self.system_context = """You are a MEDICAL TRIAGE ASSISTANT AI specialized exclusively in health and medical conversations. Keep responses conversational and brief (1-2 sentences).
+        self.system_context = """You are a MEDICAL TRIAGE ASSISTANT AI. Your goal is to efficiently gather symptoms and provide a likely assessment.
 
-STRICT MEDICAL FOCUS:
-- ONLY respond to health, medical, wellness, symptom, or injury-related topics
-- If a message is not about health/medical topics, politely redirect to medical concerns
-- Do NOT engage with non-medical topics even if they appear in medical conversation context
-- Do NOT try to connect non-medical messages to previous medical discussions
+LANGUAGE & TONE:
+- **Bilingual**: Detect the user's language (English or Urdu) and respond in the EXACT SAME language.
+- **Concise**: Keep responses short (1-2 sentences).
+- **One Question Rule**: Ask ONLY ONE follow-up question at a time. Never ask multiple questions in a single turn.
 
-Core Medical Triage Features:
-FE-1: Maintain context in multi-turn conversations for coherent medical discussions
-FE-2: Conduct symptom assessments and provide diagnostic suggestions based on user inputs
-FE-3: Offer lifestyle recommendations (diet, exercise) tailored to symptoms and health insights
-FE-4: Advise users to consult specific medical specialists when symptoms indicate professional medical advice
+TRIAGE PROTOCOL:
+1.  **Gather Info**: If the user's condition is unclear, ask a specific question to narrow down possibilities (use OPQRST: Onset, Provocation, Quality, Region, Severity, Time).
+2.  **Red Flags**: If you detect emergency symptoms (chest pain, difficulty breathing, severe bleeding), STOP questioning and advise immediate emergency care.
+3.  **Formulate Hypothesis**: As you gather info, build a list of potential conditions.
+4.  **Assessment**: Once you have enough information (usually after 3-4 questions) or feel somewhat confident, provide:
+    *   **Likely Cause**: What might be happening.
+    *   **Recommendations**: Home care or lifestyle advice.
+    *   **Next Step**: Whether to see a GP, specialist, or go to ER.
 
-Medical Response Guidelines:
-- Show empathy while maintaining professional boundaries
-- Keep responses conversational and clear
-- Never diagnose, only suggest possibilities and next steps
-- Ask follow-up questions to maintain medical context
-- Guide users to appropriate specialists when needed
-- Provide lifestyle advice based on symptoms
-
-Non-Medical Message Response:
-- If message is clearly not health-related, respond: "I'm a medical triage assistant. Please share your health concerns or medical questions so I can assist you properly."
-- Do NOT attempt to relate non-medical topics to previous medical discussions"""
+EMPATHY:
+- Briefly validate distress ("I understand that sounds painful") before asking your ONE question."""
 
         
 
@@ -115,21 +108,25 @@ Response:"""
         if not self.is_health_related(message):
             return "I'm your medical triage assistant. How can I help with your health concerns today?"
         
-        # FE-2: Symptom assessment and diagnostic suggestions
-        if any(keyword in message.lower() for keyword in ['symptom', 'feel', 'pain', 'discomfort', 'ache']):
-            return f"Conduct a symptom assessment for: {message}. Ask follow-up questions to understand the context better."
+        # FE-2: Symptom assessment (Expanded keywords)
+        if any(keyword in message.lower() for keyword in ['symptom', 'feel', 'pain', 'hurt', 'ache', 'swollen', 'dizzy', 'nausea', 'bleeding', 'rash']):
+            return f"User is reporting symptoms: {message}. Start or continue the triage process. Ask ONE specific follow-up question using OPQRST to narrow down the cause. Do not give a diagnosis yet unless you have full context."
         
+        # Mental Health Support
+        elif any(keyword in message.lower() for keyword in ['sad', 'anxious', 'depressed', 'stress', 'panic', 'worry', 'tired', 'lonely', 'mood']):
+            return f"User is expressing mental distress: {message}. Validate their feelings warmly. Ask ONE gentle follow-up question to understand the severity or duration."
+
         # FE-3: Lifestyle recommendations
-        elif any(keyword in message.lower() for keyword in ['lifestyle', 'diet', 'exercise', 'nutrition', 'fitness']):
-            return f"Provide lifestyle recommendations addressing: {message}. Include diet and exercise suggestions."
+        elif any(keyword in message.lower() for keyword in ['lifestyle', 'diet', 'food', 'eat', 'exercise', 'workout', 'sleep', 'habit']):
+            return f"Provide brief, actionable lifestyle advice for: {message}. Limit to 2-3 key tips."
         
         # FE-4: Specialist consultation guidance
-        elif any(keyword in message.lower() for keyword in ['specialist', 'doctor', 'consultation', 'see a doctor']):
-            return f"Guide about medical consultation for: {message}. Suggest appropriate specialists if needed."
+        elif any(keyword in message.lower() for keyword in ['specialist', 'doctor', 'hospital', 'clinic', 'appointment']):
+            return f"Guide the user on which specialist to see for: {message}. Be direct and concise."
         
         # General health concerns
         else:
-            return f"Provide medical triage guidance for: {message}. Assess symptoms and suggest next steps."
+            return f"Triage this health concern: {message}. If vague, ask ONE clarifying question. If clear, provide an assessment and next steps."
 
     def create_context_aware_prompt(self, message: str, conversation_history: List[Dict]) -> str:
         """FE-1: Create context-aware prompts for multi-turn conversations."""
@@ -149,7 +146,7 @@ Maintain context and provide coherent medical triage guidance. If this is a foll
     def _build_context_summary(self, conversation_history: List[Dict]) -> str:
         """Build a summary of conversation context."""
         recent_topics = []
-        for msg in conversation_history[-3:]:  # Last 3 messages for context
+        for msg in conversation_history[-6:]:  # Last 3 messages for context
             if msg.get('role') == 'user':
                 recent_topics.append(msg.get('content', ''))
         
@@ -166,6 +163,6 @@ Maintain context and provide coherent medical triage guidance. If this is a foll
         
         # Check if response contains medical advice
         if any(keyword in response.lower() for keyword in medical_advice_keywords):
-            return f"{response}\nNote: Consult healthcare professionals for medical advice."
+            return f"{response}\nNote: Seek a physical medical consultation if your condition feels urgent."
         
         return response 

@@ -20,14 +20,14 @@ export default function PatientHomeScreen({ navigation }) {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
   const avatarViewerRef = useRef(null);
-  
+
   // Background gradient animation
   const gradientAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     fetchPatientProfile();
     loadLanguagePreference();
-    
+
     // Start gradient animation
     Animated.loop(
       Animated.sequence([
@@ -50,10 +50,10 @@ export default function PatientHomeScreen({ navigation }) {
     if (avatarLoaded && avatarViewerRef.current) {
       console.log('📦 Preloading all animations...');
       const animations = [
-        'loop.fbx',
-        'yes-nod.fbx',
-        'Thinking.fbx',
-        'thoughtful.fbx'
+        'Idle2.fbx',        // Index 0: Idle state (default)
+        'yes-nod.fbx',     // Index 1: Recording/listening
+        'thoughtful.fbx',  // Index 2: Thinking/processing
+        'normal.fbx'       // Index 3: Speaking
       ];
 
       // Load all animations sequentially
@@ -66,8 +66,8 @@ export default function PatientHomeScreen({ navigation }) {
           loadIndex++;
           setTimeout(loadNext, 500); // Small delay between loads
         } else {
-          console.log('✅ All animations preloaded, starting first animation (loop)');
-          // Play first animation (index 0 = loop) after all are loaded
+          console.log('✅ All animations preloaded, starting Idle animation');
+          // Play Idle animation (index 0 = Idle.fbx) after all are loaded
           avatarViewerRef.current.playAnimation(0, true, 0.5);
         }
       };
@@ -118,7 +118,7 @@ export default function PatientHomeScreen({ navigation }) {
         setPatientEmail(profile.email || '');
         setAvatarId(profile.avatar_id);
         setAvatarUrl(profile.avatar_url);
-        
+
         console.log('Profile loaded:', {
           name: profile.name,
           email: profile.email,
@@ -174,10 +174,10 @@ export default function PatientHomeScreen({ navigation }) {
           bottom: 0,
         }}
       />
-      
+
       {/* Toast notifications at the top level */}
       <NotificationToast />
-      
+
       <SideDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
@@ -203,32 +203,23 @@ export default function PatientHomeScreen({ navigation }) {
         }}
         onLogout={handleLogout}
       />
-      
-      <LinearGradient colors={["#6B70A8", "#9896C4"]} style={styles.header}>
+
+      <LinearGradient colors={["#6B70A8", "#9896C4", "#C3C1E6"]} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.hamburgerButton}
             onPress={() => setDrawerVisible(true)}
           >
             <Text style={styles.hamburgerIcon}>☰</Text>
           </TouchableOpacity>
-          
+
           <View style={styles.headerCenter}>
             <Text style={styles.greeting}>Hi {patientName},</Text>
-            <ScrollView 
-              style={styles.subtitleContainer}
-              contentContainerStyle={styles.subtitleContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.subtitle}>
-                {aiResponse || "How can I help you?"}
-              </Text>
-            </ScrollView>
           </View>
-          
+
           <NotificationBell />
         </View>
-        
+
         {avatarUrl ? (
           <View style={styles.avatarContainer}>
             <AvatarViewer3D
@@ -240,18 +231,46 @@ export default function PatientHomeScreen({ navigation }) {
                 setAvatarLoaded(true);
               }}
               onAudioEnded={() => {
-                console.log('🔄 Audio ended, returning to loop animation');
+                console.log('🔄 Audio ended, returning to Idle animation');
                 if (avatarViewerRef.current) {
-                  avatarViewerRef.current.playAnimation(0, true, 0.5); // Index 0 = loop
+                  avatarViewerRef.current.playAnimation(0, true, 0.5); // Index 0 = Idle.fbx
                 }
+                // Hide subtitles after a short delay so user can finish reading
+                setTimeout(() => {
+                  setAiResponse(null);
+                }, 3000);
               }}
             />
+
+            {/* Floating Subtitle Overlay - Glassmorphism Style */}
+            {aiResponse && (
+              <View style={styles.floatingSubtitleContainer}>
+                <View style={styles.floatingSubtitleGlass} />
+
+                {aiResponse === 'Thinking...' ? (
+                  <View style={styles.thinkingContainer}>
+                    <PulsingDots />
+                    <Text style={styles.thinkingText}>Processing</Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    style={styles.subtitleScroll}
+                    contentContainerStyle={styles.subtitleContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <Text style={styles.floatingSubtitleText}>
+                      {aiResponse}
+                    </Text>
+                  </ScrollView>
+                )}
+              </View>
+            )}
           </View>
         ) : (
           <View style={styles.avatarContainer}>
             <View style={styles.noAvatarPlaceholder}>
               <Text style={styles.noAvatarText}>No Avatar</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.createAvatarButton}
                 onPress={() => navigation.navigate('AvatarSelection')}
               >
@@ -263,7 +282,7 @@ export default function PatientHomeScreen({ navigation }) {
       </LinearGradient>
 
       <View style={styles.bottomSection}>
-        <VoiceChat 
+        <VoiceChat
           selectedLanguage={selectedLanguage}
           avatarViewerRef={avatarViewerRef}
           onResponse={(response) => {
@@ -275,6 +294,53 @@ export default function PatientHomeScreen({ navigation }) {
     </View>
   );
 }
+
+// Simple Pulsing Dots Component
+const PulsingDots = () => {
+  const [dot1] = useState(new Animated.Value(0.3));
+  const [dot2] = useState(new Animated.Value(0.3));
+  const [dot3] = useState(new Animated.Value(0.3));
+
+  useEffect(() => {
+    const animate = (anim, delay) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0.3,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+
+    animate(dot1, 0);
+    animate(dot2, 200);
+    animate(dot3, 400);
+  }, []);
+
+  const dotStyle = {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    marginHorizontal: 3,
+  };
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+      <Animated.View style={[dotStyle, { opacity: dot1 }]} />
+      <Animated.View style={[dotStyle, { opacity: dot2 }]} />
+      <Animated.View style={[dotStyle, { opacity: dot3 }]} />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   loadingContainer: {
@@ -294,10 +360,11 @@ const styles = StyleSheet.create({
   headerTop: {
     width: '100%',
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center', // Changed from flex-start to center
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 10, // Reduced margin
     paddingHorizontal: 10,
+    height: 50, // Fixed height for header top
   },
   hamburgerButton: {
     padding: 10,
@@ -316,29 +383,65 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontStyle: 'italic',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: 0, // Removed margin
   },
-  subtitleContainer: {
-    maxHeight: 80,
+  // New Floating Subtitle Styles
+  floatingSubtitleContainer: {
+    position: 'absolute',
+    top: 5, // Moved to top
+    left: 20,
+    right: 20,
+    height: 110, // Slightly reduced height
+    borderRadius: 16,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  floatingSubtitleGlass: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(18, 18, 18, 0.2)', // Reduced opacity from 0.5 to 0.3
+    borderRadius: 16,
+  },
+  subtitleScroll: {
     width: '100%',
+    maxHeight: '100%',
   },
   subtitleContent: {
+    padding: 12,
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    minHeight: 80,
   },
-  subtitle: {
-    fontSize: 16,
-    fontStyle: 'italic',
+  floatingSubtitleText: {
+    fontSize: 15, // Reduced from 18
     color: '#ffffff',
     textAlign: 'center',
     lineHeight: 22,
+    fontWeight: '400',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
+  thinkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  thinkingText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
+  // Removed old subtitle styles
   avatarContainer: {
     flex: 1,
     width: '100%',
     maxWidth: 500,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative', // Ensure absolute children work
   },
   avatarViewer: {
     width: '100%',
