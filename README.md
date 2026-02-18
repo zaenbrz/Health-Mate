@@ -37,7 +37,7 @@ Health-Mate/
 │   ├── app/            # Screens & navigation
 │   ├── components/     # UI components
 │   └── assets/         # Images & resources
-├── weights/            # Pre-trained models
+├── weights/            # Custom-trained models(Segmentation)
 └── requirements.txt    # Python dependencies
 ```
 
@@ -96,3 +96,4 @@ MongoDB collections: `users`, `appointments`, `doctor_availability`, `chats`, `s
 ## License
 
 Proprietary and confidential
+
