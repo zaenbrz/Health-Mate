@@ -1,2 +1,0 @@
-# Avatar Files Directory
-
